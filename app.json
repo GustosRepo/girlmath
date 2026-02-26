@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "girlmath-ai",
+    "name": "GirlMath",
     "slug": "girlmath-ai",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,10 +10,13 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FFB6D9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "GirlMath sends reminders before your bills are due so you never miss a payment 💸"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,8 +24,19 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": ["android.permission.POST_NOTIFICATIONS", "android.permission.RECEIVE_BOOT_COMPLETED"]
     },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#FFB6D9",
+          "defaultChannel": "bills"
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }
