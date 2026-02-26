@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.girlmath.app",
+      "bundleIdentifier": "com.girlmathapp.ios",
       "buildNumber": "1",
       "infoPlist": {
         "NSUserNotificationUsageDescription": "GirlMath sends reminders before your bills are due so you never miss a payment 💸"
