@@ -130,13 +130,6 @@ export default function PaywallScreen({ onClose }: Props) {
     }
   };
 
-  const handleTipJar = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Alert.alert('🍵 aww tysm!', 'Tip jar coming soon — your matcha support means everything 🥹', [
-      { text: '💖 ok!' },
-    ]);
-  };
-
   const shineTranslate = shineAnim.interpolate({
     inputRange: [-1, 1.4],
     outputRange: [-width * 0.9, width * 0.9],
@@ -359,19 +352,6 @@ export default function PaywallScreen({ onClose }: Props) {
         </Text>
 
         {/* ── SECONDARY ACTIONS ─────────────────────────────── */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={handleTipJar}
-          style={styles.tipJarBtn}
-        >
-          <LinearGradient
-            colors={['rgba(255,255,255,0.7)', 'rgba(255,214,236,0.7)']}
-            style={styles.tipJarInner}
-          >
-            <Text style={styles.tipJarText}>Buy your bestie a matcha 🍵</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-
         <TouchableOpacity
           activeOpacity={0.6}
           onPress={handleDismiss}
@@ -695,29 +675,6 @@ const styles = StyleSheet.create({
   },
 
   // ── Secondary Actions ──────────────────────────────────
-  tipJarBtn: {
-    width: '100%',
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#FF69B4',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: 14,
-  },
-  tipJarInner: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,182,217,0.6)',
-  },
-  tipJarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#7C3AED',
-  },
   dismissBtn: {
     marginBottom: 20,
     paddingVertical: 8,
