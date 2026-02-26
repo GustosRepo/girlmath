@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setupAndroidChannel } from './src/utils/notifications';
+import { initRevenueCat } from './src/utils/purchases';
 import HomeScreen from './src/screens/HomeScreen';
 import BillsScreen from './src/screens/BillsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -30,6 +31,7 @@ export default function App() {
 
   useEffect(() => {
     setupAndroidChannel();
+    initRevenueCat();          // 🔑 RevenueCat init
     AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
       setHasOnboarded(!!val);
     });

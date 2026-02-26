@@ -14,24 +14,15 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import {
+  purchaseMonthly,
+  purchaseLifetime,
+  restorePurchases,
+} from '../utils/purchases';
+
+export { purchaseMonthly, purchaseLifetime, restorePurchases };
 
 const { width } = Dimensions.get('window');
-
-// ─── RevenueCat stub ───────────────────────────────────────────────────────────
-// Replace these with real react-native-purchases calls when ready.
-export async function purchaseMonthly(): Promise<boolean> {
-  console.log('[RevenueCat] purchaseMonthly stub called');
-  return false;
-}
-export async function purchaseLifetime(): Promise<boolean> {
-  console.log('[RevenueCat] purchaseLifetime stub called');
-  return false;
-}
-export async function restorePurchases(): Promise<boolean> {
-  console.log('[RevenueCat] restorePurchases stub called');
-  return false;
-}
-// ──────────────────────────────────────────────────────────────────────────────
 
 export const PAYWALL_DISMISSED_KEY = '@girlmath_paywall_dismissed';
 
@@ -129,16 +120,10 @@ export default function PaywallScreen({ onClose }: Props) {
 
       if (success) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await AsyncStorage.setItem(PAYWALL_DISMISSED_KEY, 'true');
         Alert.alert('💖 Welcome bestie!', "You're officially premium. The world is your wallet.", [
           { text: "let's go 💅", onPress: onClose },
         ]);
-      } else {
-        // stub: just show a demo alert
-        Alert.alert(
-          '🛒 RevenueCat not set up yet',
-          'Wire up react-native-purchases to enable real purchases!',
-          [{ text: 'ok bestie' }]
-        );
       }
     } finally {
       setPurchasing(false);
