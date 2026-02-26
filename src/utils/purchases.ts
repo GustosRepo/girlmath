@@ -19,10 +19,15 @@ import Purchases, {
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
 
-// ─── 🔑 CONFIG — swap these in before going live ──────────────────────────────
-const REVENUECAT_IOS_KEY = 'appl_REPLACE_WITH_YOUR_KEY';
-const MONTHLY_PRODUCT_ID = 'girlmath_monthly';
-const LIFETIME_PRODUCT_ID = 'girlmath_lifetime';
+// ─── 🔑 CONFIG ────────────────────────────────────────────────────────────────
+// RevenueCat dashboard → Project Settings → API Keys → iOS
+const REVENUECAT_IOS_KEY = 'REPLACE_WITH_REVENUECAT_IOS_KEY'; // e.g. appl_xxxxxxxxxxxxxxxx
+
+// Must match your App Store Connect product identifiers exactly
+const MONTHLY_PRODUCT_ID = 'girlmath_monthly';   // change if yours differs
+const LIFETIME_PRODUCT_ID = 'girlmath_lifetime'; // change if yours differs
+
+// Entitlement ID in RevenueCat dashboard (create one called "premium")
 const ENTITLEMENT_ID = 'premium';
 // ──────────────────────────────────────────────────────────────────────────────
 

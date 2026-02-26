@@ -17,7 +17,8 @@
       "bundleIdentifier": "com.girlmathapp.ios",
       "buildNumber": "1",
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "GirlMath sends reminders before your bills are due so you never miss a payment 💸"
+        "NSUserNotificationUsageDescription": "GirlMath sends reminders before your bills are due so you never miss a payment 💸",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +28,10 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "permissions": ["android.permission.POST_NOTIFICATIONS", "android.permission.RECEIVE_BOOT_COMPLETED"]
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ]
     },
     "plugins": [
       [
@@ -41,6 +45,12 @@
     ],
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "42086ab7-8898-4730-8a9d-ec67861e6940"
+      }
+    },
+    "owner": "codewerx"
   }
 }

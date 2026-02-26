@@ -1,12 +1,16 @@
 import { PriceCheckResult } from '../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ── Configuration ──────────────────────────────────────────
-// iOS Simulator → localhost works fine
-// Physical device → use your Mac's LAN IP (must be on same WiFi)
-const IS_SIMULATOR = true; // set to true if using Expo iOS simulator
+// ── Backend Configuration ─────────────────────────────────
+// 🚀 PRODUCTION: paste your Railway URL here once deployed
+const PRODUCTION_API_URL = 'REPLACE_WITH_RAILWAY_URL'; // e.g. https://girlmath-production.up.railway.app
+
+// 🧪 LOCAL DEV:
+const IS_SIMULATOR = true; // set false for physical device
 const LOCAL_IP = '192.168.0.46';
-const API_URL = IS_SIMULATOR ? 'http://localhost:3456' : `http://${LOCAL_IP}:3456`;
+const LOCAL_URL = IS_SIMULATOR ? 'http://localhost:3456' : `http://${LOCAL_IP}:3456`;
+
+const API_URL = PRODUCTION_API_URL.startsWith('REPLACE') ? LOCAL_URL : PRODUCTION_API_URL;
 
 const DEVICE_ID_KEY = '@girlmath_device_id';
 
