@@ -16,6 +16,6 @@ app.get('/', (_req, res) => {
 app.post('/api/price-check', priceCheckHandler);
 
 const PORT = process.env.PORT || 3456;
-app.listen(PORT, () => {
-  console.log(`💖 GirlMath backend running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`💖 GirlMath backend running on http://0.0.0.0:${PORT}`);
 });
