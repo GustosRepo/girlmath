@@ -2,15 +2,12 @@ import { PriceCheckResult } from '../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Backend Configuration ─────────────────────────────────
-// 🚀 PRODUCTION: paste your Railway URL here once deployed
-const PRODUCTION_API_URL = 'REPLACE_WITH_RAILWAY_URL'; // e.g. https://girlmath-production.up.railway.app
-
-// 🧪 LOCAL DEV:
-const IS_SIMULATOR = true; // set false for physical device
+// Set EXPO_PUBLIC_API_URL in .env to your Railway URL
+// Leave blank in .env to use localhost for local dev
+const IS_SIMULATOR = true;
 const LOCAL_IP = '192.168.0.46';
 const LOCAL_URL = IS_SIMULATOR ? 'http://localhost:3456' : `http://${LOCAL_IP}:3456`;
-
-const API_URL = PRODUCTION_API_URL.startsWith('REPLACE') ? LOCAL_URL : PRODUCTION_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL || LOCAL_URL;
 
 const DEVICE_ID_KEY = '@girlmath_device_id';
 

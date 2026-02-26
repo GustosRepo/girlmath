@@ -20,8 +20,8 @@ import Purchases, {
 import { Platform, Alert } from 'react-native';
 
 // ─── 🔑 CONFIG ────────────────────────────────────────────────────────────────
-// RevenueCat dashboard → Project Settings → API Keys → iOS
-const REVENUECAT_IOS_KEY = 'REPLACE_WITH_REVENUECAT_IOS_KEY'; // e.g. appl_xxxxxxxxxxxxxxxx
+// Set EXPO_PUBLIC_REVENUECAT_IOS_KEY in your .env file
+const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
 
 // Must match your App Store Connect product identifiers exactly
 const MONTHLY_PRODUCT_ID = 'girlmath_monthly';   // change if yours differs
@@ -36,7 +36,11 @@ let _initialized = false;
 /** Call once on app start (App.tsx useEffect). */
 export function initRevenueCat(userId?: string) {
   if (_initialized) return;
-  if (Platform.OS !== 'ios') return; // Android key not set up yet
+  if (Platform.OS !== 'ios') return;
+  if (!REVENUECAT_IOS_KEY) {
+    console.warn('[RevenueCat] EXPO_PUBLIC_REVENUECAT_IOS_KEY not set — purchases disabled');
+    return;
+  }
 
   Purchases.setLogLevel(LOG_LEVEL.ERROR);
   Purchases.configure({ apiKey: REVENUECAT_IOS_KEY });
