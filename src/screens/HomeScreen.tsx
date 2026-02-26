@@ -25,7 +25,8 @@ import {
 } from '../types';
 import { generateJustification } from '../utils/girlMathEngine';
 import { computeSpendable, fmt$ } from '../utils/finance';
-import { loadState, addHistory, incrementJustifyCount, getJustifyCount } from '../utils/storage';
+import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount } from '../utils/storage';
+import * as StoreReview from 'expo-store-review';
 import { fetchPriceCheck, RateLimitError } from '../utils/priceCheck';
 import { usePaywall } from '../context/PaywallContext';
 
@@ -172,6 +173,12 @@ export default function HomeScreen() {
       if (count >= FREE_JUSTIFIES) {
         // Small delay so the response animates in first
         setTimeout(() => showPaywall(), 1800);
+      }
+
+      // Lifetime counter → ask for review after 5th total justify
+      const total = await incrementTotalJustifyCount();
+      if (total === 5 && await StoreReview.hasAction()) {
+        setTimeout(() => StoreReview.requestReview(), 2000);
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);

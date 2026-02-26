@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import * as StoreReview from 'expo-store-review';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -96,13 +97,26 @@ export default function SettingsScreen() {
         </GradientCard>
         {/* About card */}
         <GradientCard>
-          <Text style={styles.sectionTitle}>about girl math AI ✨</Text>
+          <Text style={styles.sectionTitle}>about GirlMath ✨</Text>
           <Text style={styles.aboutText}>
             your spending bestie — justifying every purchase with{' '}
             <Text style={styles.bold}>delulu logic</Text>, real price checks, and
             zero judgment 💕
           </Text>
           <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.reviewBtn}
+            activeOpacity={0.75}
+            onPress={async () => {
+              if (await StoreReview.hasAction()) {
+                await StoreReview.requestReview();
+              } else {
+                Alert.alert('💖 aww tysm!', 'Find us on the App Store and leave a rating — it means the world 🌟');
+              }
+            }}
+          >
+            <Text style={styles.reviewBtnText}>⭐ rate GirlMath</Text>
+          </TouchableOpacity>
           <Text style={styles.versionText}>version 1.0 💅</Text>
         </GradientCard>
 
@@ -258,5 +272,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     color: '#EF4444',
+  },
+  reviewBtn: {
+    backgroundColor: 'rgba(255,182,217,0.25)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: COLORS.pinkHot,
+    marginBottom: 12,
+  },
+  reviewBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.pinkHot,
   },
 });

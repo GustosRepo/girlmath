@@ -101,3 +101,17 @@ export async function getJustifyCount(): Promise<number> {
     return 0;
   }
 }
+
+// ── Lifetime total justify counter (never resets) ─────────────────
+const TOTAL_JUSTIFY_KEY = '@girlmath_total_justifies';
+
+export async function incrementTotalJustifyCount(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(TOTAL_JUSTIFY_KEY);
+    const next = (raw ? parseInt(raw, 10) : 0) + 1;
+    await AsyncStorage.setItem(TOTAL_JUSTIFY_KEY, String(next));
+    return next;
+  } catch {
+    return 0;
+  }
+}
