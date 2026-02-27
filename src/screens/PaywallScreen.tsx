@@ -366,11 +366,11 @@ export default function PaywallScreen({ onClose }: Props) {
           · Restore purchases in Settings
         </Text>
         <View style={styles.legalLinksRow}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://girlmath-production-600b.up.railway.app/legal/privacy.html')}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://getgirlmath.app/privacy')}>
             <Text style={styles.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}> · </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://girlmath-production-600b.up.railway.app/legal/terms.html')}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://getgirlmath.app/terms')}>
             <Text style={styles.legalLink}>Terms of Use</Text>
           </TouchableOpacity>
         </View>

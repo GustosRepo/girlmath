@@ -13,7 +13,7 @@ import { loadState, saveMode } from '../utils/storage';
 import { requestNotifPermission } from '../utils/notifications';
 import { restorePurchases } from '../utils/purchases';
 
-const LEGAL_BASE = 'https://girlmath-production-600b.up.railway.app/legal';
+const LEGAL_BASE = 'https://getgirlmath.app';
 
 export default function SettingsScreen() {
   const [personality, setPersonality] = useState<PersonalityMode>('delulu');
@@ -142,11 +142,11 @@ export default function SettingsScreen() {
 
           {/* Legal links */}
           <View style={styles.legalRow}>
-            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/privacy.html`)}>
+            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/privacy`)}>
               <Text style={styles.legalLink}>privacy policy</Text>
             </TouchableOpacity>
             <Text style={styles.legalDot}>·</Text>
-            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/terms.html`)}>
+            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/terms`)}>
               <Text style={styles.legalLink}>terms of use</Text>
             </TouchableOpacity>
           </View>
