@@ -1,9 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking } from 'react-native';
 import * as StoreReview from 'expo-store-review';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
@@ -12,8 +11,9 @@ import { COLORS } from '../utils/theme';
 import { PersonalityMode } from '../types';
 import { loadState, saveMode } from '../utils/storage';
 import { requestNotifPermission } from '../utils/notifications';
-import { ONBOARDING_KEY } from './OnboardingScreen';
-import { PAYWALL_DISMISSED_KEY } from './PaywallScreen';
+import { restorePurchases } from '../utils/purchases';
+
+const LEGAL_BASE = 'https://girlmath-production-600b.up.railway.app/legal';
 
 export default function SettingsScreen() {
   const [personality, setPersonality] = useState<PersonalityMode>('delulu');
@@ -117,35 +117,41 @@ export default function SettingsScreen() {
           >
             <Text style={styles.reviewBtnText}>⭐ rate GirlMath</Text>
           </TouchableOpacity>
-          <Text style={styles.versionText}>version 1.0 💅</Text>
-        </GradientCard>
 
-        {/* 🛠 Dev tools — remove before App Store submission */}
-        <GradientCard>
-          <Text style={styles.sectionTitle}>🛠 dev tools</Text>
+          {/* Restore Purchases */}
           <TouchableOpacity
-            style={styles.devBtn}
+            style={styles.restoreBtn}
             activeOpacity={0.75}
-            onPress={() =>
-              Alert.alert(
-                'Reset onboarding?',
-                'This will clear onboarding + paywall flags so you can replay the full first-launch flow.',
-                [
-                  { text: 'cancel', style: 'cancel' },
-                  {
-                    text: 'reset 🔄',
-                    style: 'destructive',
-                    onPress: async () => {
-                      await AsyncStorage.multiRemove([ONBOARDING_KEY, PAYWALL_DISMISSED_KEY]);
-                      Alert.alert('done ✨', 'Restart the app to see onboarding again.');
-                    },
-                  },
-                ]
-              )
-            }
+            onPress={async () => {
+              try {
+                const restored = await restorePurchases();
+                if (restored) {
+                  Alert.alert('💖 restored!', 'Your premium access has been restored.');
+                } else {
+                  Alert.alert('no purchases found', 'We couldn\'t find any previous purchases on this Apple ID.');
+                }
+              } catch {
+                Alert.alert('oops', 'Something went wrong restoring purchases. Try again later.');
+              }
+            }}
           >
-            <Text style={styles.devBtnText}>reset onboarding + paywall 🔄</Text>
+            <Text style={styles.restoreBtnText}>🔄 restore purchases</Text>
           </TouchableOpacity>
+
+          <View style={styles.divider} />
+
+          {/* Legal links */}
+          <View style={styles.legalRow}>
+            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/privacy.html`)}>
+              <Text style={styles.legalLink}>privacy policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalDot}>·</Text>
+            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/terms.html`)}>
+              <Text style={styles.legalLink}>terms of use</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.versionText}>version 1.0 💅</Text>
         </GradientCard>
       </ScrollView>
     </GradientBackground>
@@ -260,19 +266,6 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     flex: 1,
   },
-  devBtn: {
-    backgroundColor: 'rgba(239,68,68,0.08)',
-    borderRadius: 14,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(239,68,68,0.3)',
-  },
-  devBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#EF4444',
-  },
   reviewBtn: {
     backgroundColor: 'rgba(255,182,217,0.25)',
     borderRadius: 14,
@@ -286,5 +279,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: COLORS.pinkHot,
+  },
+  restoreBtn: {
+    backgroundColor: 'rgba(192,132,252,0.15)',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(192,132,252,0.4)',
+    marginBottom: 12,
+  },
+  restoreBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#C084FC',
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
+  legalLink: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.pinkHot,
+    textDecorationLine: 'underline',
+  },
+  legalDot: {
+    fontSize: 13,
+    color: COLORS.textMuted,
   },
 });

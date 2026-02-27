@@ -10,6 +10,7 @@ import {
   Dimensions,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -361,8 +362,18 @@ export default function PaywallScreen({ onClose }: Props) {
         </TouchableOpacity>
 
         <Text style={styles.legalText}>
-          Prices shown in USD · Auto-renews unless cancelled · Restore purchases available in Settings
+          Prices shown in USD · Auto-renews unless cancelled{' '}
+          · Restore purchases in Settings
         </Text>
+        <View style={styles.legalLinksRow}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://girlmath-production-600b.up.railway.app/legal/privacy.html')}>
+            <Text style={styles.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <Text style={styles.legalDot}> · </Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://girlmath-production-600b.up.railway.app/legal/terms.html')}>
+            <Text style={styles.legalLink}>Terms of Use</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -693,5 +704,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 16,
     paddingHorizontal: 16,
+  },
+  legalLinksRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  legalLink: {
+    fontSize: 11,
+    color: '#9B8EC4',
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  legalDot: {
+    fontSize: 11,
+    color: '#9B8EC4',
   },
 });

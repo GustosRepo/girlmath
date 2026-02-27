@@ -25,7 +25,7 @@ const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
 
 // Must match your App Store Connect product identifiers exactly
 const MONTHLY_PRODUCT_ID = 'girlmath_monthly';   // change if yours differs
-const LIFETIME_PRODUCT_ID = 'girlmath_lifetime'; // change if yours differs
+const LIFETIME_PRODUCT_ID = 'girlmath_life'; // change if yours differs
 
 // Entitlement ID in RevenueCat dashboard (create one called "premium")
 const ENTITLEMENT_ID = 'premium';

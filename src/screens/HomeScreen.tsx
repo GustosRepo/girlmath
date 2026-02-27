@@ -359,6 +359,8 @@ export default function HomeScreen() {
               message={response.message}
               emoji={response.emoji}
               reactions={response.reactions}
+              itemName={itemName}
+              price={parsedPrice}
             />
           )}
 

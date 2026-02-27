@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const { priceCheckHandler } = require('./priceCheck');
@@ -33,6 +34,9 @@ app.get('/', (_req, res) => {
 app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true });
 });
+
+// Legal pages (Privacy Policy & Terms of Use)
+app.use('/legal', express.static(path.join(__dirname, 'legal')));
 
 // Price check endpoint
 app.post('/api/price-check', priceCheckHandler);

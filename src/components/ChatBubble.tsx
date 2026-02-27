@@ -1,17 +1,23 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { COLORS } from '../utils/theme';
+import * as Sharing from 'expo-sharing';
+import ViewShot from 'react-native-view-shot';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, GRADIENTS } from '../utils/theme';
 
 interface ChatBubbleProps {
   message: string;
   emoji: string;
   reactions: string[];
+  itemName?: string;
+  price?: number;
 }
 
-export default function ChatBubble({ message, emoji, reactions }: ChatBubbleProps) {
+export default function ChatBubble({ message, emoji, reactions, itemName, price }: ChatBubbleProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const shotRef = useRef<ViewShot>(null);
 
   useEffect(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -21,24 +27,64 @@ export default function ChatBubble({ message, emoji, reactions }: ChatBubbleProp
     ]).start();
   }, [message]);
 
+  const handleShare = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const uri = await (shotRef.current as any)?.capture?.();
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share your GirlMath justification 💅',
+        });
+      }
+    } catch {
+      // Fallback: shouldn't happen but fail silently
+    }
+  };
+
+  const priceText = price ? `$${price}` : '';
+
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      <View style={styles.headerRow}>
-        <Text style={styles.sender}>💖 GirlMath</Text>
-        <Text style={styles.headerEmoji}>{emoji}</Text>
-      </View>
-      <View style={styles.bubble}>
-        <Text style={styles.sparkleTop}>✨ 💫 ✨</Text>
-        <Text style={styles.message}>{message}</Text>
-        <Text style={styles.sparkleBottom}>💖 🌟 💖</Text>
-      </View>
-      <View style={styles.reactionsRow}>
-        {reactions.map((r, i) => (
-          <View key={i} style={styles.reactionChip}>
-            <Text style={styles.reactionText}>{r}</Text>
+      {/* Capturable card with gradient background */}
+      <ViewShot ref={shotRef} options={{ format: 'png', quality: 1 }}>
+        <LinearGradient
+          colors={GRADIENTS.background as [string, string, ...string[]]}
+          style={styles.shotWrap}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Branding header */}
+          <Text style={styles.brandHeader}>💖 GirlMath</Text>
+          {itemName ? (
+            <Text style={styles.itemLabel}>{itemName} {priceText ? `· ${priceText}` : ''}</Text>
+          ) : null}
+
+          {/* The bubble */}
+          <View style={styles.bubble}>
+            <Text style={styles.sparkleTop}>✨ 💫 ✨</Text>
+            <Text style={styles.message}>{message}</Text>
+            <Text style={styles.sparkleBottom}>💖 🌟 💖</Text>
           </View>
-        ))}
-      </View>
+
+          {/* Reactions */}
+          <View style={styles.reactionsRow}>
+            {reactions.map((r, i) => (
+              <View key={i} style={styles.reactionChip}>
+                <Text style={styles.reactionText}>{r}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Footer watermark */}
+          <Text style={styles.watermark}>girlmath app · your bestie for bad financial decisions 💅</Text>
+        </LinearGradient>
+      </ViewShot>
+
+      {/* Share button (outside the screenshot area) */}
+      <TouchableOpacity onPress={handleShare} style={styles.shareButton} activeOpacity={0.7}>
+        <Text style={styles.shareText}>📤 share this justification</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 }
@@ -47,21 +93,29 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 12,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    paddingHorizontal: 4,
+  shotWrap: {
+    borderRadius: 24,
+    padding: 20,
+    overflow: 'hidden',
   },
-  sender: {
+  brandHeader: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: COLORS.white,
+    textAlign: 'center',
+    letterSpacing: 1,
+    marginBottom: 4,
+    textShadowColor: 'rgba(192,132,252,0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  itemLabel: {
     fontSize: 13,
-    fontWeight: '800',
-    color: COLORS.pinkHot,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    marginBottom: 12,
     letterSpacing: 0.5,
-  },
-  headerEmoji: {
-    fontSize: 16,
-    marginLeft: 6,
   },
   bubble: {
     backgroundColor: COLORS.whiteTranslucent,
@@ -70,11 +124,6 @@ const styles = StyleSheet.create({
     padding: 18,
     borderWidth: 1.5,
     borderColor: COLORS.glassBorder,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
   },
   sparkleTop: {
     textAlign: 'center',
@@ -96,8 +145,8 @@ const styles = StyleSheet.create({
   },
   reactionsRow: {
     flexDirection: 'row',
-    marginTop: 8,
-    paddingHorizontal: 4,
+    marginTop: 10,
+    justifyContent: 'center',
     gap: 8,
   },
   reactionChip: {
@@ -110,5 +159,29 @@ const styles = StyleSheet.create({
   },
   reactionText: {
     fontSize: 18,
+  },
+  watermark: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.5,
+  },
+  shareButton: {
+    alignSelf: 'center',
+    marginTop: 10,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: COLORS.glassBorder,
+  },
+  shareText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.pinkHot,
+    letterSpacing: 0.3,
   },
 });

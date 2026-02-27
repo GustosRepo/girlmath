@@ -70,7 +70,12 @@ export async function clearHistory(): Promise<void> {
 const JUSTIFY_COUNT_KEY = '@girlmath_justify_count';
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  // Use local date, not UTC, so the daily reset matches the user's actual day
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 export async function incrementJustifyCount(): Promise<number> {

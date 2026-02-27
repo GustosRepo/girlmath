@@ -8,6 +8,7 @@ const limits = new Map(); // deviceId -> { count: number, date: string }
 const MAX_PER_DAY = parseInt(process.env.MAX_CHECKS_PER_USER_PER_DAY || '3', 10);
 
 function today() {
+  // Use UTC on the server (Railway runs UTC) — consistent for all users
   return new Date().toISOString().slice(0, 10); // "2026-02-25"
 }
 
