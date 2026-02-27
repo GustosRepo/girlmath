@@ -18,6 +18,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Log every request
+app.use((req, _res, next) => {
+  console.log(`${new Date().toISOString()} ${req.method} ${req.path}`);
+  next();
+});
+
 // Root route — Railway health check + human-readable status
 app.get('/', (_req, res) => {
   res.status(200).send('GirlMath API up 💖');

@@ -240,6 +240,7 @@ function extractNote(extensions) {
 async function priceCheckHandler(req, res) {
   try {
     const { productName, userPrice, deviceId } = req.body;
+    console.log(`💰 price-check | product="${productName}" price=${userPrice} device=${deviceId || 'unknown'}`);
 
     if (!productName || typeof productName !== 'string' || productName.trim().length < 2) {
       return res.status(400).json({ error: 'Missing product name' });
