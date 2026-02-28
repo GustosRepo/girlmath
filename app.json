@@ -13,7 +13,7 @@
       "backgroundColor": "#FFB6D9"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.girlmathapp.ios",
       "buildNumber": "1",
       "infoPlist": {
