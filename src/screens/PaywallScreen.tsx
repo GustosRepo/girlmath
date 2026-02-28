@@ -370,7 +370,7 @@ export default function PaywallScreen({ onClose }: Props) {
             <Text style={styles.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}> · </Text>
-            <TouchableOpacity onPress={() => Linking.openURL('https://getgirlmath.app/terms')}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
             <Text style={styles.legalLink}>Terms of Use</Text>
           </TouchableOpacity>
         </View>

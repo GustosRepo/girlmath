@@ -14,6 +14,7 @@ import { requestNotifPermission } from '../utils/notifications';
 import { restorePurchases } from '../utils/purchases';
 
 const LEGAL_BASE = 'https://getgirlmath.app';
+const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 export default function SettingsScreen() {
   const [personality, setPersonality] = useState<PersonalityMode>('delulu');
@@ -146,7 +147,7 @@ export default function SettingsScreen() {
               <Text style={styles.legalLink}>privacy policy</Text>
             </TouchableOpacity>
             <Text style={styles.legalDot}>·</Text>
-            <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/terms`)}>
+            <TouchableOpacity onPress={() => Linking.openURL(APPLE_EULA_URL)}>
               <Text style={styles.legalLink}>terms of use</Text>
             </TouchableOpacity>
           </View>
