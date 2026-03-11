@@ -139,3 +139,34 @@ export async function rescheduleAllBills(bills: BillReminder[]): Promise<BillRem
   }
   return updated;
 }
+
+// ── Budget alert — fire when spending hits a threshold ────
+const BUDGET_ALERT_THRESHOLDS = [
+  { pct: 100, title: '🚨 over budget bestie!', body: "you've spent more than your budget this period 😬 time to chill on the shopping" },
+  { pct: 80, title: '⚠️ 80% of budget spent!', body: "you've used 80% of your spending money this period — tread carefully queen 👑" },
+];
+
+export async function maybeSendBudgetAlert(spentPct: number): Promise<void> {
+  const granted = await requestNotifPermission();
+  if (!granted) return;
+
+  for (const threshold of BUDGET_ALERT_THRESHOLDS) {
+    // Fire if we just crossed this threshold (within a 5% window so it only fires once-ish)
+    if (spentPct >= threshold.pct && spentPct < threshold.pct + 5) {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: threshold.title,
+            body: threshold.body,
+            sound: 'default',
+            ...(Platform.OS === 'android' ? { channelId: 'bills' } : {}),
+          },
+          trigger: null, // immediate
+        });
+      } catch (e) {
+        console.warn('[notifs] budget alert failed', e);
+      }
+      break; // only fire the highest threshold
+    }
+  }
+}

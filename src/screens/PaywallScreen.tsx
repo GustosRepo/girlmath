@@ -203,7 +203,7 @@ export default function PaywallScreen({ onClose }: Props) {
         <View style={styles.headlineWrap}>
           <Text style={styles.headline}>Upgrade your spending bestie 💖</Text>
           <Text style={styles.subheadline}>
-            Unlock unlimited girl math, deeper insights, and premium vibes
+            Unlock unlimited justifies, spending insights, export reports & budget alerts
           </Text>
         </View>
 
@@ -248,9 +248,10 @@ export default function PaywallScreen({ onClose }: Props) {
 
               <View style={styles.featureList}>
                 {[
-                  '✨ Unlimited price checks',
-                  '📊 Monthly spending summary',
-                  '🌍 Multi-language support',
+                  '✨ Unlimited justifies',
+                  '📊 Export spending reports',
+                  '💡 Spending insights',
+                  '🔔 Budget alerts',
                 ].map((f, i) => (
                   <Text key={i} style={styles.featureRow}>{f}</Text>
                 ))}
@@ -297,8 +298,9 @@ export default function PaywallScreen({ onClose }: Props) {
               <View style={styles.featureList}>
                 {[
                   '💎 Everything unlocked forever',
-                  '♾️ No limits, ever',
-                  '🎨 Future themes included',
+                  '♾️ Unlimited justifies & exports',
+                  '💡 Spending insights & alerts',
+                  '🎨 Future features included',
                 ].map((f, i) => (
                   <Text key={i} style={[styles.featureRow, styles.featureRowLifetime]}>{f}</Text>
                 ))}

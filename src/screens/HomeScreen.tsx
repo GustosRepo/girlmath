@@ -30,9 +30,12 @@ import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incremen
 import * as StoreReview from 'expo-store-review';
 import { fetchPriceCheck, RateLimitError } from '../utils/priceCheck';
 import { usePaywall } from '../context/PaywallContext';
+import { hasPremium } from '../utils/purchases';
+import { maybeSendBudgetAlert } from '../utils/notifications';
 
 import GradientBackground from '../components/GradientBackground';
 import GradientCard from '../components/GradientCard';
+import CollapsibleSection from '../components/CollapsibleSection';
 import InputRow from '../components/InputRow';
 import AuraMeter from '../components/AuraMeter';
 import ChatBubble from '../components/ChatBubble';
@@ -43,6 +46,28 @@ import PriceCheckResultCard from '../components/PriceCheckResultCard';
 // ══════════════════════════════════════════════════════════
 // Daily free justify allowance before paywall nudge
 const FREE_JUSTIFIES = 3;
+
+// Rotating placeholders that teach specificity by example
+const ITEM_PLACEHOLDERS = [
+  'Coach Tabby Shoulder Bag 26',
+  'Stanley Quencher 40oz Tumbler',
+  'Dyson Airwrap Complete Long',
+  'Lululemon Align 25" leggings',
+  'Nike Dunk Low Panda',
+  'Charlotte Tilbury Pillow Talk set',
+  'Apple AirPods Pro 2',
+  'Sol de Janeiro Bum Bum Cream',
+  'UGG Classic Mini II boots',
+  'Skims Soft Lounge Long Sleeve dress',
+];
+
+function isVagueName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  const words = trimmed.split(/\s+/);
+  // Too short (1-2 words) and no numbers → probably vague
+  return words.length <= 2 && !/\d/.test(trimmed);
+}
 
 export default function HomeScreen() {
   const { showPaywall } = usePaywall();
@@ -78,6 +103,17 @@ export default function HomeScreen() {
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
   const [logConfirmMsg, setLogConfirmMsg] = useState('');
   const [isLogging, setIsLogging] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(
+    () => Math.floor(Math.random() * ITEM_PLACEHOLDERS.length),
+  );
+
+  // ── clear inputs after action ────────────────────────
+  const clearInputs = () => {
+    setItemName('');
+    setPrice('');
+    setNote('');
+    setPlaceholderIdx((i) => (i + 1) % ITEM_PLACEHOLDERS.length);
+  };
 
   // ── derived ───────────────────────────────────────────
   const parsedPrice = parseFloat(price) || 0;
@@ -111,6 +147,8 @@ export default function HomeScreen() {
     if (!itemName.trim() || parsedPrice <= 0) return;
     setPriceLoading(true);
     setPriceError('');
+    setResponse(null);
+    setLogConfirmMsg('');
     try {
       const result = await fetchPriceCheck(itemName.trim(), parsedPrice);
       setPriceResult(result);
@@ -143,6 +181,9 @@ export default function HomeScreen() {
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setLogConfirmMsg('');
+    setPriceResult(null);
+    setPriceError('');
 
     Animated.sequence([
       Animated.spring(buttonScale, { toValue: 0.92, useNativeDriver: true, speed: 50 }),
@@ -192,6 +233,8 @@ export default function HomeScreen() {
       }
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+      // Clear inputs after a brief moment so user sees result
+      setTimeout(() => clearInputs(), 500);
     }, 800 + Math.random() * 700);
   };
 
@@ -208,6 +251,10 @@ export default function HomeScreen() {
   const handleLogExpense = async (fromJustify = false) => {
     if (!itemName.trim() || parsedPrice <= 0) return;
     setIsLogging(true);
+    if (!fromJustify) {
+      setResponse(null);
+      setPriceResult(null);
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
@@ -233,8 +280,21 @@ export default function HomeScreen() {
     const updated = await addExpense(parsedPrice, moneyCtx.payFrequency);
     setPeriodExpenses(updated);
 
+    // Budget alert for premium users
+    if (hasMoneyCtx) {
+      const spendableAmt = computeSpendable(moneyCtx, 0, updated.total).perPeriod + updated.total;
+      if (spendableAmt > 0) {
+        const spentPct = (updated.total / spendableAmt) * 100;
+        const premium = await hasPremium();
+        if (premium) {
+          maybeSendBudgetAlert(spentPct);
+        }
+      }
+    }
+
     setTimeout(() => {
       setIsLogging(false);
+      clearInputs();
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 300);
   };
@@ -269,10 +329,19 @@ export default function HomeScreen() {
             <Text style={styles.cardTitle}>💅 what are we buying?</Text>
             <InputRow
               icon="🛍️"
-              placeholder="item name (e.g. Stanley cup)"
+              placeholder={ITEM_PLACEHOLDERS[placeholderIdx]}
               value={itemName}
               onChangeText={(t: string) => { setItemName(t); setLogConfirmMsg(''); }}
             />
+            {itemName.trim().length > 0 && isVagueName(itemName) ? (
+              <Text style={styles.vagueHint}>
+                💡 be specific for better results — e.g. "{ITEM_PLACEHOLDERS[placeholderIdx]}"
+              </Text>
+            ) : (
+              <Text style={styles.inputHelperText}>
+                include brand + model for best results ✨
+              </Text>
+            )}
             <InputRow
               icon="💰"
               placeholder="price"
@@ -289,10 +358,133 @@ export default function HomeScreen() {
             />
           </GradientCard>
 
-          {/* ── Money Vibe (auto from Bills tab) ──────────── */}
-          {hasMoneyCtx && parsedPrice > 0 && spendable && (
+          {/* ── Action Buttons (right after inputs!) ───── */}
+          <View style={styles.buttonRow}>
+            <Animated.View style={[{ transform: [{ scale: buttonScale }] }, styles.buttonFlex]}>
+              <TouchableOpacity
+                onPress={handleJustify}
+                activeOpacity={0.8}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading}
+              >
+                <LinearGradient
+                  colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
+                  style={styles.button}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>
+                    {isLoading ? '✨ ...' : justifiesLeft === 0 ? '🔒' : '💅 justify'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            <View style={styles.buttonFlex}>
+              <TouchableOpacity
+                onPress={handlePriceCheck}
+                activeOpacity={0.8}
+                disabled={!itemName.trim() || parsedPrice <= 0 || priceLoading || checksRemaining === 0}
+              >
+                <LinearGradient
+                  colors={checksRemaining === 0 ? ['#9ca3af', '#6b7280'] : ['#F59E0B', '#D97706'] as [string, string]}
+                  style={styles.button}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>
+                    {priceLoading ? '🔍 ...' : '🛍️ prices'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.buttonFlex}>
+              <TouchableOpacity
+                onPress={() => handleLogExpense(false)}
+                activeOpacity={0.8}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLogging}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A'] as [string, string]}
+                  style={styles.button}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>
+                    {isLogging ? '✨ ...' : '📝 log it'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ── Hints row ────────────────────────────────── */}
+          <Text style={styles.justifiesRemainingText}>
+            {justifiesLeft > 0
+              ? `${justifiesLeft} free justify${justifiesLeft === 1 ? '' : 's'} left today ✨`
+              : "you've used all 3 today — upgrade for unlimited 💖"}
+          </Text>
+
+          {/* ── Thinking cat while loading ──────────── */}
+          {isLoading && (
+            <View style={styles.loadingCatWrap}>
+              <Image
+                source={require('../../assets/smallthinkingcat.png')}
+                style={styles.loadingCat}
+              />
+            </View>
+          )}
+
+          {/* ── Results area (only one shows at a time) ── */}
+          {response && !isLoading && (
+            <>
+              <ChatBubble
+                message={response.message}
+                emoji={response.emoji}
+                reactions={response.reactions}
+                itemName={itemName}
+                price={parsedPrice}
+              />
+              {!logConfirmMsg && (
+                <TouchableOpacity
+                  onPress={() => handleLogExpense(true)}
+                  activeOpacity={0.7}
+                  style={styles.logThisTooBtn}
+                >
+                  <Text style={styles.logThisTooText}>
+                    📝 log this purchase too (free)
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {priceResult && !isLoading && !response && (
             <GradientCard>
-              <Text style={styles.computedTitle}>✨ your money vibe ✨</Text>
+              <PriceCheckResultCard result={priceResult} />
+              {checksRemaining !== null && (
+                <Text style={styles.remainingText}>
+                  {checksRemaining > 0
+                    ? `${checksRemaining} check${checksRemaining === 1 ? '' : 's'} left today ✨`
+                    : "no checks left today — come back tomorrow bestie 💅"}
+                </Text>
+              )}
+            </GradientCard>
+          )}
+
+          {priceError ? (
+            <Text style={styles.warnText}>{priceError}</Text>
+          ) : null}
+
+          {logConfirmMsg ? (
+            <GradientCard>
+              <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
+            </GradientCard>
+          ) : null}
+
+          {/* ── Money Vibe + Aura (collapsible) ──────── */}
+          {hasMoneyCtx && parsedPrice > 0 && spendable && (
+            <CollapsibleSection title="✨ your money vibe">
               <Text style={styles.computedRow}>
                 spendable per period: {fmt$(spendable.perPeriod)}
               </Text>
@@ -312,47 +504,10 @@ export default function HomeScreen() {
                   💀 bestie your spendable is negative… broke aura detected
                 </Text>
               )}
-              <Text style={styles.vibeHint}>
-                set up income & bills in the bills tab 💅
-              </Text>
-            </GradientCard>
-          )}
-
-          {/* ── Price Check Button ──────────────────────── */}
-          {itemName.trim() && parsedPrice > 0 && (
-            <GradientCard>
-              <TouchableOpacity
-                style={[
-                  styles.miniButton,
-                  (checksRemaining === 0) && styles.miniButtonDisabled,
-                ]}
-                onPress={handlePriceCheck}
-                disabled={priceLoading || checksRemaining === 0}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.miniButtonText}>
-                  {priceLoading ? '🔍 checking prices...' : '🛍️ check prices for this item'}
-                </Text>
-              </TouchableOpacity>
-              {checksRemaining !== null && (
-                <Text style={styles.remainingText}>
-                  {checksRemaining > 0
-                    ? `${checksRemaining} check${checksRemaining === 1 ? '' : 's'} left today ✨`
-                    : "no checks left today — come back tomorrow bestie 💅"}
-                </Text>
-              )}
-              {priceError ? (
-                <Text style={styles.warnText}>{priceError}</Text>
-              ) : null}
-              {priceResult && <PriceCheckResultCard result={priceResult} />}
-            </GradientCard>
-          )}
-
-          {/* ── Aura Meter ─────────────────────────────── */}
-          {parsedPrice > 0 && (
-            <GradientCard>
-              <AuraMeter price={parsedPrice} spendable={spendable} />
-            </GradientCard>
+              <View style={{ marginTop: 8 }}>
+                <AuraMeter price={parsedPrice} spendable={spendable} />
+              </View>
+            </CollapsibleSection>
           )}
 
           {/* ── Mode reminder ──────────────────────────── */}
@@ -372,102 +527,6 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.modeBadgeHint}>change in settings ⚙️</Text>
           </View>
-
-          {/* ── Thinking cat while loading ──────────── */}
-          {isLoading && (
-            <View style={styles.loadingCatWrap}>
-              <Image
-                source={require('../../assets/smallthinkingcat.png')}
-                style={styles.loadingCat}
-              />
-            </View>
-          )}
-
-          {/* ── Justify Button ─────────────────────────── */}
-          <View style={styles.buttonRow}>
-            <Animated.View style={[{ transform: [{ scale: buttonScale }] }, styles.buttonFlex]}>
-              <TouchableOpacity
-                onPress={handleJustify}
-                activeOpacity={0.8}
-                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading}
-              >
-                <LinearGradient
-                  colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
-                  style={[
-                    styles.button,
-                    (!itemName.trim() || parsedPrice <= 0) && styles.buttonDisabled,
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLoading ? '✨ manifesting...' : justifiesLeft === 0 ? '🔒 limit reached' : '💅 justify'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-
-            {/* ── Log Button (FREE) ───────────────────── */}
-            <View style={styles.buttonFlex}>
-              <TouchableOpacity
-                onPress={() => handleLogExpense(false)}
-                activeOpacity={0.8}
-                disabled={!itemName.trim() || parsedPrice <= 0 || isLogging}
-              >
-                <LinearGradient
-                  colors={['#22C55E', '#16A34A'] as [string, string]}
-                  style={[
-                    styles.button,
-                    (!itemName.trim() || parsedPrice <= 0) && styles.buttonDisabled,
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.buttonText}>
-                    {isLogging ? '✨ logging...' : '📝 log it'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-          {/* ── Justifies remaining hint ─────────────── */}
-          <Text style={styles.justifiesRemainingText}>
-            {justifiesLeft > 0
-              ? `${justifiesLeft} free justify${justifiesLeft === 1 ? '' : 's'} left today ✨`
-              : "you've used all 3 today — upgrade for unlimited 💖"}
-          </Text>
-
-          {/* ── AI Response ─────────────────────────────── */}
-          {response && !isLoading && (
-            <>
-              <ChatBubble
-                message={response.message}
-                emoji={response.emoji}
-                reactions={response.reactions}
-                itemName={itemName}
-                price={parsedPrice}
-              />
-              {/* Log This Too — free since justify already used */}
-              {!logConfirmMsg && (
-                <TouchableOpacity
-                  onPress={() => handleLogExpense(true)}
-                  activeOpacity={0.7}
-                  style={styles.logThisTooBtn}
-                >
-                  <Text style={styles.logThisTooText}>
-                    📝 log this purchase too (free)
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* ── Log confirmation message ───────────────── */}
-          {logConfirmMsg ? (
-            <GradientCard>
-              <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
-            </GradientCard>
-          ) : null}
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>made with 💖 and zero financial literacy</Text>
@@ -582,6 +641,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: -4,
     marginBottom: 8,
+  },
+  vagueHint: {
+    fontSize: 12,
+    color: '#F59E0B',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: -6,
+    marginBottom: 6,
+    fontStyle: 'italic',
+  },
+  inputHelperText: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: -6,
+    marginBottom: 6,
+    fontStyle: 'italic',
   },
   // main justify button
   button: {
