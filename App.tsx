@@ -31,7 +31,7 @@ export default function App() {
 
   useEffect(() => {
     setupAndroidChannel();
-    initRevenueCat();          // 🔑 RevenueCat init
+    try { initRevenueCat(); } catch {}   // 🔑 RevenueCat init (may fail in Expo Go)
     AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
       setHasOnboarded(!!val);
     });

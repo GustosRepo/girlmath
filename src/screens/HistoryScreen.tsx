@@ -50,6 +50,7 @@ export default function HistoryScreen() {
 
   const totalSpent = history.reduce((s, h) => s + h.price, 0);
   const steals = history.filter((h) => h.verdict === 'steal').length;
+  const loggedCount = history.filter((h) => h.isLogged).length;
 
   const handleClear = () => {
     Alert.alert('clear history?', 'this can\'t be undone bestie 👀', [
@@ -93,6 +94,11 @@ export default function HistoryScreen() {
                 <Text style={styles.statValue}>{steals}</Text>
                 <Text style={styles.statLabel}>steals found</Text>
               </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: '#16A34A' }]}>{loggedCount}</Text>
+                <Text style={styles.statLabel}>logged</Text>
+              </View>
             </View>
           </GradientCard>
         )}
@@ -118,6 +124,18 @@ export default function HistoryScreen() {
                     <Text style={styles.verdictText}>
                       {VERDICT_BADGE[entry.verdict].emoji}{' '}
                       {entry.verdict}
+                    </Text>
+                  </View>
+                )}
+                {entry.isLogged && (
+                  <View
+                    style={[
+                      styles.verdictBadge,
+                      { backgroundColor: 'rgba(34,197,94,0.12)' },
+                    ]}
+                  >
+                    <Text style={[styles.verdictText, { color: '#16A34A' }]}>
+                      📝 logged
                     </Text>
                   </View>
                 )}

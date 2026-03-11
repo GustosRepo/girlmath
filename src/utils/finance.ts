@@ -11,10 +11,12 @@ const PERIODS_PER_MONTH: Record<PayFrequency, number> = {
 
 /**
  * Compute spendable cash per period and per month.
+ * periodExpenses = total already logged this pay period.
  */
 export function computeSpendable(
   ctx: MoneyContext,
   purchasePrice: number,
+  periodExpenses: number = 0,
 ): SpendableResult {
   const periodsPerMonth = PERIODS_PER_MONTH[ctx.payFrequency];
 
@@ -25,7 +27,7 @@ export function computeSpendable(
   // Savings deduction per period
   const savingsPerPeriod = ctx.payAmount * (ctx.savingsGoalPct / 100);
 
-  const perPeriod = ctx.payAmount - billsPerPeriod - savingsPerPeriod;
+  const perPeriod = ctx.payAmount - billsPerPeriod - savingsPerPeriod - periodExpenses;
 
   const monthly = perPeriod * periodsPerMonth;
 

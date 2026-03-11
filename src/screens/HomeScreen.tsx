@@ -22,10 +22,11 @@ import {
   SpendableResult,
   PriceCheckResult,
   HistoryEntry,
+  PeriodExpenses,
 } from '../types';
 import { generateJustification } from '../utils/girlMathEngine';
 import { computeSpendable, fmt$ } from '../utils/finance';
-import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount } from '../utils/storage';
+import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense } from '../utils/storage';
 import * as StoreReview from 'expo-store-review';
 import { fetchPriceCheck, RateLimitError } from '../utils/priceCheck';
 import { usePaywall } from '../context/PaywallContext';
@@ -73,11 +74,16 @@ export default function HomeScreen() {
   const [justifyCount, setJustifyCount] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
 
+  // ── expense logging ───────────────────────────────────
+  const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
+  const [logConfirmMsg, setLogConfirmMsg] = useState('');
+  const [isLogging, setIsLogging] = useState(false);
+
   // ── derived ───────────────────────────────────────────
   const parsedPrice = parseFloat(price) || 0;
   const spendable: SpendableResult | undefined =
     hasMoneyCtx && parsedPrice > 0
-      ? computeSpendable(moneyCtx, parsedPrice)
+      ? computeSpendable(moneyCtx, parsedPrice, periodExpenses.total)
       : undefined;
 
   // ── animations ────────────────────────────────────────
@@ -93,6 +99,9 @@ export default function HomeScreen() {
         if (saved.lastMode) setPersonality(saved.lastMode);
         const c = await getJustifyCount();
         setJustifyCount(c);
+        const freq = saved.moneyContext?.payFrequency ?? 'biweekly';
+        const expenses = await loadPeriodExpenses(freq);
+        setPeriodExpenses(expenses);
       })();
     }, []),
   );
@@ -164,6 +173,7 @@ export default function HomeScreen() {
         emoji: result.emoji,
         verdict: priceResult?.verdict,
         timestamp: new Date().toISOString(),
+        isLogged: false,
       };
       await addHistory(entry);
 
@@ -183,6 +193,50 @@ export default function HomeScreen() {
 
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
     }, 800 + Math.random() * 700);
+  };
+
+  // ── log expense handler (FREE — no daily limit) ────────
+  const LOG_MESSAGES = [
+    'yes babe you know what you want 💅',
+    'logged it queen, your budget is updated ✨',
+    'money well spent bestie 💖',
+    'added to the diary, slay responsibly 👑',
+    'noted! your budget knows about this now 🩷',
+    'logged and gorgeous, just like you 💫',
+  ];
+
+  const handleLogExpense = async (fromJustify = false) => {
+    if (!itemName.trim() || parsedPrice <= 0) return;
+    setIsLogging(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
+    setLogConfirmMsg(msg);
+
+    // Save to history with isLogged flag
+    if (!fromJustify) {
+      const entry: HistoryEntry = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        itemName: itemName.trim(),
+        price: parsedPrice,
+        personality,
+        message: msg,
+        emoji: '📝',
+        verdict: priceResult?.verdict,
+        timestamp: new Date().toISOString(),
+        isLogged: true,
+      };
+      await addHistory(entry);
+    }
+
+    // Add to period expenses
+    const updated = await addExpense(parsedPrice, moneyCtx.payFrequency);
+    setPeriodExpenses(updated);
+
+    setTimeout(() => {
+      setIsLogging(false);
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 300);
   };
 
   // ── render ────────────────────────────────────────────
@@ -217,13 +271,13 @@ export default function HomeScreen() {
               icon="🛍️"
               placeholder="item name (e.g. Stanley cup)"
               value={itemName}
-              onChangeText={setItemName}
+              onChangeText={(t: string) => { setItemName(t); setLogConfirmMsg(''); }}
             />
             <InputRow
               icon="💰"
               placeholder="price"
               value={price}
-              onChangeText={setPrice}
+              onChangeText={(t: string) => { setPrice(t); setLogConfirmMsg(''); }}
               keyboardType="decimal-pad"
               prefix="$"
             />
@@ -248,6 +302,11 @@ export default function HomeScreen() {
               <Text style={styles.computedRow}>
                 this purchase: {spendable.purchasePct.toFixed(1)}% of spendable
               </Text>
+              {periodExpenses.total > 0 && (
+                <Text style={styles.computedRow}>
+                  💸 logged this period: {fmt$(periodExpenses.total)}
+                </Text>
+              )}
               {spendable.perPeriod <= 0 && (
                 <Text style={styles.warnText}>
                   💀 bestie your spendable is negative… broke aura detected
@@ -325,27 +384,52 @@ export default function HomeScreen() {
           )}
 
           {/* ── Justify Button ─────────────────────────── */}
-          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-            <TouchableOpacity
-              onPress={handleJustify}
-              activeOpacity={0.8}
-              disabled={!itemName.trim() || parsedPrice <= 0 || isLoading}
-            >
-              <LinearGradient
-                colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
-                style={[
-                  styles.button,
-                  (!itemName.trim() || parsedPrice <= 0) && styles.buttonDisabled,
-                ]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+          <View style={styles.buttonRow}>
+            <Animated.View style={[{ transform: [{ scale: buttonScale }] }, styles.buttonFlex]}>
+              <TouchableOpacity
+                onPress={handleJustify}
+                activeOpacity={0.8}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading}
               >
-                <Text style={styles.buttonText}>
-                  {isLoading ? '✨ manifesting... ✨' : justifiesLeft === 0 ? '🔒 daily limit reached' : '💅 justify my purchase'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
+                <LinearGradient
+                  colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
+                  style={[
+                    styles.button,
+                    (!itemName.trim() || parsedPrice <= 0) && styles.buttonDisabled,
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>
+                    {isLoading ? '✨ manifesting...' : justifiesLeft === 0 ? '🔒 limit reached' : '💅 justify'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* ── Log Button (FREE) ───────────────────── */}
+            <View style={styles.buttonFlex}>
+              <TouchableOpacity
+                onPress={() => handleLogExpense(false)}
+                activeOpacity={0.8}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLogging}
+              >
+                <LinearGradient
+                  colors={['#22C55E', '#16A34A'] as [string, string]}
+                  style={[
+                    styles.button,
+                    (!itemName.trim() || parsedPrice <= 0) && styles.buttonDisabled,
+                  ]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.buttonText}>
+                    {isLogging ? '✨ logging...' : '📝 log it'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
           {/* ── Justifies remaining hint ─────────────── */}
           <Text style={styles.justifiesRemainingText}>
             {justifiesLeft > 0
@@ -355,14 +439,35 @@ export default function HomeScreen() {
 
           {/* ── AI Response ─────────────────────────────── */}
           {response && !isLoading && (
-            <ChatBubble
-              message={response.message}
-              emoji={response.emoji}
-              reactions={response.reactions}
-              itemName={itemName}
-              price={parsedPrice}
-            />
+            <>
+              <ChatBubble
+                message={response.message}
+                emoji={response.emoji}
+                reactions={response.reactions}
+                itemName={itemName}
+                price={parsedPrice}
+              />
+              {/* Log This Too — free since justify already used */}
+              {!logConfirmMsg && (
+                <TouchableOpacity
+                  onPress={() => handleLogExpense(true)}
+                  activeOpacity={0.7}
+                  style={styles.logThisTooBtn}
+                >
+                  <Text style={styles.logThisTooText}>
+                    📝 log this purchase too (free)
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
+
+          {/* ── Log confirmation message ───────────────── */}
+          {logConfirmMsg ? (
+            <GradientCard>
+              <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
+            </GradientCard>
+          ) : null}
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>made with 💖 and zero financial literacy</Text>
@@ -493,9 +598,39 @@ const styles = StyleSheet.create({
   buttonDisabled: { opacity: 0.5 },
   buttonText: {
     color: COLORS.white,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+  },
+  buttonFlex: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  logThisTooBtn: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(34,197,94,0.15)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.3)',
+  },
+  logThisTooText: {
+    color: '#16A34A',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  logConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#16A34A',
+    textAlign: 'center',
+    paddingVertical: 4,
   },
   loadingCatWrap: {
     alignItems: 'center',

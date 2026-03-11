@@ -91,4 +91,11 @@ export interface HistoryEntry {
   emoji: string;
   verdict?: PriceVerdict;
   timestamp: string;      // ISO date string
+  isLogged?: boolean;     // true if user logged as actual expense
+}
+
+// ── Expense tracking ───────────────────────────────────────
+export interface PeriodExpenses {
+  periodStart: string;    // ISO date of current pay period start
+  total: number;          // running total for this period
 }

@@ -20,9 +20,10 @@ import GradientCard from '../components/GradientCard';
 import CollapsibleSection from '../components/CollapsibleSection';
 import InputRow from '../components/InputRow';
 import { BillReminder, BillCategory, MoneyContext, PayFrequency } from '../types';
-import { loadBills, saveBills, loadState, saveMoneyContext } from '../utils/storage';
-import { fmt$ } from '../utils/finance';
+import { loadBills, saveBills, loadState, saveMoneyContext, loadPeriodExpenses } from '../utils/storage';
+import { fmt$, computeSpendable } from '../utils/finance';
 import { scheduleBillNotifs, cancelBillNotifs, rescheduleAllBills } from '../utils/notifications';
+import { PeriodExpenses } from '../types';
 
 const { width } = Dimensions.get('window');
 
@@ -78,6 +79,7 @@ export default function BillsScreen() {
   const [amount, setAmount] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [category, setCategory] = useState<BillCategory>('other');
+  const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
 
   // Load bills + saved income on focus
   useFocusEffect(
@@ -88,6 +90,7 @@ export default function BillsScreen() {
           setPayFrequency(s.moneyContext.payFrequency);
           setPayAmount(s.moneyContext.payAmount);
           setSavingsGoalPct(s.moneyContext.savingsGoalPct);
+          loadPeriodExpenses(s.moneyContext.payFrequency).then(setPeriodExpenses);
         }
       });
     }, []),
@@ -127,6 +130,17 @@ export default function BillsScreen() {
   const totalMonthly = bills.reduce((s, b) => s + b.amount, 0);
   const paidCount = bills.filter((b) => b.isPaid).length;
   const unpaidTotal = bills.filter((b) => !b.isPaid).reduce((s, b) => s + b.amount, 0);
+
+  // Spending summary
+  const hasIncome = payAmount > 0;
+  const spendablePerPeriod = hasIncome
+    ? computeSpendable(
+        { payFrequency, payAmount, rent: bills.filter(b => b.category === 'rent').reduce((s, b) => s + b.amount, 0), carNote: bills.filter(b => b.category === 'car').reduce((s, b) => s + b.amount, 0), billsTotal: bills.filter(b => b.category !== 'rent' && b.category !== 'car').reduce((s, b) => s + b.amount, 0), savingsGoalPct },
+        0,
+      ).perPeriod
+    : 0;
+  const remaining = Math.round((spendablePerPeriod - periodExpenses.total) * 100) / 100;
+  const spentPct = spendablePerPeriod > 0 ? Math.min(100, (periodExpenses.total / spendablePerPeriod) * 100) : 0;
 
   // Sort: unpaid first (by days until due), then paid
   const sorted = [...bills].sort((a, b) => {
@@ -288,6 +302,49 @@ export default function BillsScreen() {
                   ? 'all paid queen! 👑'
                   : `${Math.round((paidCount / bills.length) * 100)}% done`}
               </Text>
+            </View>
+          )}
+
+          {/* Spending this period */}
+          {hasIncome && (
+            <View style={styles.spentPeriodSection}>
+              <Text style={styles.spentPeriodTitle}>💰 spending this period</Text>
+
+              <View style={styles.spentRow}>
+                <Text style={styles.spentLabel}>income</Text>
+                <Text style={styles.spentValue}>{fmt$(payAmount)}</Text>
+              </View>
+              <View style={styles.spentRow}>
+                <Text style={styles.spentLabel}>logged</Text>
+                <Text style={[styles.spentValue, { color: '#16A34A' }]}>{fmt$(periodExpenses.total)}</Text>
+              </View>
+              <View style={styles.spentRow}>
+                <Text style={styles.spentLabel}>remaining</Text>
+                <Text style={[styles.spentValue, { color: remaining < 0 ? '#EF4444' : COLORS.textPrimary }]}>{fmt$(remaining)}</Text>
+              </View>
+
+              {spendablePerPeriod > 0 && (
+                <View style={styles.spentProgressContainer}>
+                  <View style={styles.progressBg}>
+                    <View
+                      style={[
+                        styles.spentProgressFill,
+                        {
+                          width: `${spentPct}%` as any,
+                          backgroundColor: spentPct > 80 ? '#EF4444' : spentPct > 50 ? '#F59E0B' : '#22C55E',
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.progressText}>
+                    {spentPct < 1 && periodExpenses.total === 0
+                      ? 'nothing logged yet ✨'
+                      : spentPct >= 100
+                      ? 'over budget bestie 😬'
+                      : `${spentPct.toFixed(1)}% of budget spent`}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </GradientCard>
@@ -593,6 +650,43 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     marginTop: 6,
     fontWeight: '600',
+  },
+  spentPeriodSection: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.glassBorder,
+  },
+  spentPeriodTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  spentRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  spentLabel: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontWeight: '600',
+  },
+  spentValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  spentProgressContainer: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  spentProgressFill: {
+    height: '100%',
+    borderRadius: 5,
   },
   // Bill items
   billRow: {

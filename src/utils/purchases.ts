@@ -43,7 +43,12 @@ export function initRevenueCat(userId?: string) {
   }
 
   Purchases.setLogLevel(LOG_LEVEL.ERROR);
-  Purchases.configure({ apiKey: REVENUECAT_IOS_KEY });
+  try {
+    Purchases.configure({ apiKey: REVENUECAT_IOS_KEY });
+  } catch (e) {
+    console.warn('[RevenueCat] configure failed (Expo Go?):', e);
+    return;
+  }
 
   if (userId) {
     Purchases.logIn(userId).catch(() => {});

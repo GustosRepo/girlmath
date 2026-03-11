@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { PersistedState, MoneyContext, PersonalityMode, BillReminder, HistoryEntry } from '../types';
+import { PersistedState, MoneyContext, PersonalityMode, BillReminder, HistoryEntry, PeriodExpenses, PayFrequency } from '../types';
 
 const KEY = '@girlmath_state';
 const BILLS_KEY = '@girlmath_bills';
 const HISTORY_KEY = '@girlmath_history';
+const EXPENSES_KEY = '@girlmath_expenses';
 
 export async function loadState(): Promise<PersistedState> {
   try {
@@ -119,4 +120,56 @@ export async function incrementTotalJustifyCount(): Promise<number> {
   } catch {
     return 0;
   }
+}
+
+// ── Period expenses (resets each pay period) ──────────────────
+const PERIODS_PER_MONTH: Record<PayFrequency, number> = {
+  weekly: 4.33,
+  biweekly: 2,
+  monthly: 1,
+};
+
+function getPeriodStartDate(freq: PayFrequency): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  if (freq === 'monthly') {
+    return new Date(year, month, 1).toISOString();
+  }
+  if (freq === 'biweekly') {
+    // 2-week periods starting from the 1st and 15th
+    const periodDay = day < 15 ? 1 : 15;
+    return new Date(year, month, periodDay).toISOString();
+  }
+  // weekly — start of current week (Sunday)
+  const dayOfWeek = now.getDay();
+  const start = new Date(year, month, day - dayOfWeek);
+  return start.toISOString();
+}
+
+export async function loadPeriodExpenses(freq: PayFrequency): Promise<PeriodExpenses> {
+  try {
+    const raw = await AsyncStorage.getItem(EXPENSES_KEY);
+    const currentStart = getPeriodStartDate(freq);
+    if (raw) {
+      const parsed = JSON.parse(raw) as PeriodExpenses;
+      // Same period → return it; new period → reset
+      if (parsed.periodStart === currentStart) return parsed;
+    }
+    return { periodStart: currentStart, total: 0 };
+  } catch {
+    return { periodStart: getPeriodStartDate(freq), total: 0 };
+  }
+}
+
+export async function addExpense(amount: number, freq: PayFrequency): Promise<PeriodExpenses> {
+  const current = await loadPeriodExpenses(freq);
+  const updated: PeriodExpenses = {
+    ...current,
+    total: Math.round((current.total + amount) * 100) / 100,
+  };
+  await AsyncStorage.setItem(EXPENSES_KEY, JSON.stringify(updated));
+  return updated;
 }
