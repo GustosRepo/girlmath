@@ -11,7 +11,8 @@ import { COLORS } from '../utils/theme';
 import { PersonalityMode } from '../types';
 import { loadState, saveMode } from '../utils/storage';
 import { requestNotifPermission } from '../utils/notifications';
-import { restorePurchases } from '../utils/purchases';
+import { restorePurchases, hasPremium } from '../utils/purchases';
+import { usePaywall } from '../context/PaywallContext';
 
 const LEGAL_BASE = 'https://getgirlmath.app';
 const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
@@ -19,6 +20,8 @@ const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev
 export default function SettingsScreen() {
   const [personality, setPersonality] = useState<PersonalityMode>('delulu');
   const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown');
+  const [isPremium, setIsPremium] = useState(false);
+  const { showPaywall } = usePaywall();
 
   useFocusEffect(
     useCallback(() => {
@@ -27,6 +30,7 @@ export default function SettingsScreen() {
         if (saved.lastMode) setPersonality(saved.lastMode);
         const { status } = await Notifications.getPermissionsAsync();
         setNotifStatus(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'unknown');
+        setIsPremium(await hasPremium());
       })();
     }, []),
   );
@@ -62,6 +66,31 @@ export default function SettingsScreen() {
           <Text style={styles.title}>settings</Text>
           <Text style={styles.subtitle}>YOUR VIBE, YOUR RULES</Text>
         </View>
+
+        {/* Premium upgrade card */}
+        {!isPremium && (
+          <GradientCard>
+            <Text style={styles.sectionTitle}>💎 go premium</Text>
+            <Text style={styles.sectionHint}>
+              unlimited justifies, spending insights, export reports & more ✨
+            </Text>
+            <TouchableOpacity
+              style={styles.upgradeBtn}
+              activeOpacity={0.75}
+              onPress={() => showPaywall()}
+            >
+              <Text style={styles.upgradeBtnText}>upgrade to premium 👑</Text>
+            </TouchableOpacity>
+          </GradientCard>
+        )}
+        {isPremium && (
+          <GradientCard>
+            <Text style={styles.sectionTitle}>👑 you're premium!</Text>
+            <Text style={styles.sectionHint}>
+              unlimited everything — you're literally that girl 💅
+            </Text>
+          </GradientCard>
+        )}
 
         {/* Mode selector */}
         <GradientCard>
@@ -152,7 +181,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.versionText}>version 1.0 💅</Text>
+          <Text style={styles.versionText}>version 1.1.0 💅</Text>
         </GradientCard>
       </ScrollView>
     </GradientBackground>
@@ -294,6 +323,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
     color: '#C084FC',
+  },
+  upgradeBtn: {
+    backgroundColor: 'rgba(255,105,180,0.2)',
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FF69B4',
+  },
+  upgradeBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FF69B4',
   },
   legalRow: {
     flexDirection: 'row',
