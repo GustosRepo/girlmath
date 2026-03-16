@@ -7,7 +7,7 @@
  *
  *  2. Replace product IDs to match App Store Connect:
  *     MONTHLY_PRODUCT_ID  — your monthly subscription product ID
- *     LIFETIME_PRODUCT_ID — your one-time lifetime product ID
+ *     YEARLY_PRODUCT_ID   — your yearly subscription product ID
  *
  *  3. Create an Entitlement called "premium" in RevenueCat dashboard
  *     and attach both products to it.
@@ -25,7 +25,7 @@ const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
 
 // Must match your App Store Connect product identifiers exactly
 const MONTHLY_PRODUCT_ID = 'girlmath_monthly';   // change if yours differs
-const LIFETIME_PRODUCT_ID = 'girlmath_life'; // change if yours differs
+const YEARLY_PRODUCT_ID = 'girlmath_yearly';     // change if yours differs
 
 // Entitlement ID in RevenueCat dashboard (create one called "premium")
 const ENTITLEMENT_ID = 'premium';
@@ -91,21 +91,21 @@ export async function purchaseMonthly(): Promise<boolean> {
   }
 }
 
-/** Purchase the lifetime one-time product. Returns true on success. */
-export async function purchaseLifetime(): Promise<boolean> {
+/** Purchase the yearly subscription. Returns true on success. */
+export async function purchaseYearly(): Promise<boolean> {
   try {
     const offerings = await Purchases.getOfferings();
-    const lifetime = offerings.current?.availablePackages.find(
-      (p) => p.product.identifier === LIFETIME_PRODUCT_ID,
+    const yearly = offerings.current?.availablePackages.find(
+      (p) => p.product.identifier === YEARLY_PRODUCT_ID,
     );
-    if (!lifetime) {
+    if (!yearly) {
       Alert.alert(
         '😬 product not found',
-        `Make sure "${LIFETIME_PRODUCT_ID}" exists in App Store Connect and is linked to your RevenueCat offering.`,
+        `Make sure "${YEARLY_PRODUCT_ID}" exists in App Store Connect and is linked to your RevenueCat offering.`,
       );
       return false;
     }
-    const { customerInfo } = await Purchases.purchasePackage(lifetime);
+    const { customerInfo } = await Purchases.purchasePackage(yearly);
     return !!customerInfo.entitlements.active[ENTITLEMENT_ID];
   } catch (e: any) {
     if (!e.userCancelled) {

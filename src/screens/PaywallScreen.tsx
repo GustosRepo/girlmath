@@ -17,11 +17,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import {
   purchaseMonthly,
-  purchaseLifetime,
+  purchaseYearly,
   restorePurchases,
 } from '../utils/purchases';
 
-export { purchaseMonthly, purchaseLifetime, restorePurchases };
+export { purchaseMonthly, purchaseYearly, restorePurchases };
 
 const { width } = Dimensions.get('window');
 
@@ -47,7 +47,7 @@ interface Props {
 }
 
 export default function PaywallScreen({ onClose }: Props) {
-  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'lifetime'>('lifetime');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [purchasing, setPurchasing] = useState(false);
 
   // floating mascot animation
@@ -117,7 +117,7 @@ export default function PaywallScreen({ onClose }: Props) {
       const success =
         selectedPlan === 'monthly'
           ? await purchaseMonthly()
-          : await purchaseLifetime();
+          : await purchaseYearly();
 
       if (success) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -241,7 +241,7 @@ export default function PaywallScreen({ onClose }: Props) {
 
               <Text style={styles.planEmoji}>🌸</Text>
               <Text style={styles.planName}>Monthly</Text>
-              <Text style={styles.planPrice}>$1.99</Text>
+              <Text style={styles.planPrice}>$2.99</Text>
               <Text style={styles.planPer}>/month</Text>
 
               <View style={styles.featureDivider} />
@@ -263,17 +263,17 @@ export default function PaywallScreen({ onClose }: Props) {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Lifetime */}
+          {/* Yearly */}
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={async () => {
               await Haptics.selectionAsync();
-              setSelectedPlan('lifetime');
+              setSelectedPlan('yearly');
             }}
             style={[
               styles.planCardWrap,
               styles.planCardLifetimeWrap,
-              selectedPlan === 'lifetime' && styles.planCardSelected,
+              selectedPlan === 'yearly' && styles.planCardSelected,
             ]}
           >
             <LinearGradient
@@ -285,22 +285,22 @@ export default function PaywallScreen({ onClose }: Props) {
 
               {/* Badge */}
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>bestie favorite ✨</Text>
+                <Text style={styles.badgeText}>save 58% ✨</Text>
               </View>
 
               <Text style={styles.planEmoji}>👑</Text>
-              <Text style={[styles.planName, styles.planNameLifetime]}>Lifetime</Text>
-              <Text style={[styles.planPrice, styles.planPriceLifetime]}>$9.99</Text>
-              <Text style={[styles.planPer, styles.planPerLifetime]}>one-time</Text>
+              <Text style={[styles.planName, styles.planNameLifetime]}>Yearly</Text>
+              <Text style={[styles.planPrice, styles.planPriceLifetime]}>$14.99</Text>
+              <Text style={[styles.planPer, styles.planPerLifetime]}>/year</Text>
 
               <View style={[styles.featureDivider, { borderColor: 'rgba(255,255,255,0.5)' }]} />
 
               <View style={styles.featureList}>
                 {[
-                  '💎 Everything unlocked forever',
+                  '💎 Everything unlocked',
                   '♾️ Unlimited justifies & exports',
                   '💡 Spending insights & alerts',
-                  '🎨 Future features included',
+                  '🎨 All future features',
                 ].map((f, i) => (
                   <Text key={i} style={[styles.featureRow, styles.featureRowLifetime]}>{f}</Text>
                 ))}
@@ -350,8 +350,8 @@ export default function PaywallScreen({ onClose }: Props) {
 
         <Text style={styles.planHint}>
           {selectedPlan === 'monthly'
-            ? '💌 $1.99/mo · cancel anytime bestie'
-            : '👑 $9.99 one-time · yours forever'}
+            ? '💌 $2.99/mo · cancel anytime bestie'
+            : '👑 $14.99/yr · that\'s only $1.25/mo bestie'}
         </Text>
 
         {/* ── SECONDARY ACTIONS ─────────────────────────────── */}
