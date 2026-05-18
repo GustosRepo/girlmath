@@ -20,15 +20,15 @@ import {
   JustificationResponse,
   MoneyContext,
   SpendableResult,
-  PriceCheckResult,
   HistoryEntry,
   PeriodExpenses,
+  SmartJustificationContext,
+  SpendCategory,
 } from '../types';
 import { generateJustification } from '../utils/girlMathEngine';
 import { computeSpendable, fmt$ } from '../utils/finance';
-import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense } from '../utils/storage';
+import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore } from '../utils/storage';
 import * as StoreReview from 'expo-store-review';
-import { fetchPriceCheck, RateLimitError } from '../utils/priceCheck';
 import { usePaywall } from '../context/PaywallContext';
 import { hasPremium } from '../utils/purchases';
 import { maybeSendBudgetAlert } from '../utils/notifications';
@@ -39,7 +39,6 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import InputRow from '../components/InputRow';
 import AuraMeter from '../components/AuraMeter';
 import ChatBubble from '../components/ChatBubble';
-import PriceCheckResultCard from '../components/PriceCheckResultCard';
 
 // ══════════════════════════════════════════════════════════
 // HOME SCREEN
@@ -76,9 +75,10 @@ export default function HomeScreen() {
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
   const [note, setNote] = useState('');
-  const [personality, setPersonality] = useState<PersonalityMode>('delulu');
+  const [personality, setPersonality] = useState<PersonalityMode>('responsible');
   const [response, setResponse] = useState<JustificationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [auraTheme, setAuraTheme] = useState<import('../types').AuraTheme>('default');
 
   // ── money context ─────────────────────────────────────
   const [moneyCtx, setMoneyCtx] = useState<MoneyContext>({
@@ -90,12 +90,6 @@ export default function HomeScreen() {
     savingsGoalPct: 10,
   });
   const hasMoneyCtx = moneyCtx.payAmount > 0;
-
-  // ── price check ───────────────────────────────────────
-  const [priceResult, setPriceResult] = useState<PriceCheckResult | null>(null);
-  const [priceLoading, setPriceLoading] = useState(false);
-  const [priceError, setPriceError] = useState('');
-  const [checksRemaining, setChecksRemaining] = useState<number | null>(null);
   const [justifyCount, setJustifyCount] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
 
@@ -103,6 +97,7 @@ export default function HomeScreen() {
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
   const [logConfirmMsg, setLogConfirmMsg] = useState('');
   const [isLogging, setIsLogging] = useState(false);
+  const [smartCtx, setSmartCtx] = useState<SmartJustificationContext>({});
   const [placeholderIdx, setPlaceholderIdx] = useState(
     () => Math.floor(Math.random() * ITEM_PLACEHOLDERS.length),
   );
@@ -138,36 +133,50 @@ export default function HomeScreen() {
         const freq = saved.moneyContext?.payFrequency ?? 'biweekly';
         const expenses = await loadPeriodExpenses(freq);
         setPeriodExpenses(expenses);
+        const theme = await loadAuraTheme();
+        setAuraTheme(theme);
+
+        // Build smart context from real user data
+        const [history, jar, treat, auraScoreData] = await Promise.all([
+          loadHistory(),
+          loadSavingsJar(),
+          loadTreatBudget(),
+          loadAuraScore(),
+        ]);
+        const now = Date.now();
+        const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+        const weekTotal = history
+          .filter(e => e.isLogged && new Date(e.timestamp).getTime() > weekAgo)
+          .reduce((s, e) => s + e.price, 0);
+        const lastSplurge = history.find(e => e.isLogged);
+        const daysSinceLastSplurge = lastSplurge
+          ? Math.floor((now - new Date(lastSplurge.timestamp).getTime()) / (24 * 60 * 60 * 1000))
+          : undefined;
+        const byCategory = expenses.byCategory ?? {};
+        let topCategory: SpendCategory | undefined;
+        let topCategoryAmount: number | undefined;
+        let maxAmt = 0;
+        for (const [cat, amt] of Object.entries(byCategory)) {
+          if ((amt ?? 0) > maxAmt) {
+            maxAmt = amt ?? 0;
+            topCategory = cat as SpendCategory;
+            topCategoryAmount = amt;
+          }
+        }
+        const jarTotal = jar.reduce((s, e) => s + e.price, 0);
+        const treatRemaining = treat.monthlyLimit > 0 ? Math.max(0, treat.monthlyLimit - treat.spent) : 0;
+        setSmartCtx({
+          topCategory,
+          topCategoryAmount,
+          daysSinceLastSplurge,
+          savingsJarTotal: jarTotal > 0 ? jarTotal : undefined,
+          treatBudgetRemaining: treatRemaining > 0 ? treatRemaining : undefined,
+          weekTotal,
+          auraScore: auraScoreData.score,
+        });
       })();
     }, []),
   );
-
-  // ── price check handler ───────────────────────────────
-  const handlePriceCheck = async () => {
-    if (!itemName.trim() || parsedPrice <= 0) return;
-    setPriceLoading(true);
-    setPriceError('');
-    setResponse(null);
-    setLogConfirmMsg('');
-    try {
-      const result = await fetchPriceCheck(itemName.trim(), parsedPrice);
-      setPriceResult(result);
-      if ('remaining' in result && typeof result.remaining === 'number') {
-        setChecksRemaining(result.remaining);
-      }
-    } catch (err) {
-      setPriceResult(null);
-      if (err instanceof RateLimitError) {
-        // Rate limit hit → show paywall instead of plain error
-        setChecksRemaining(0);
-        showPaywall();
-      } else {
-        setPriceError((err as Error).message || 'Something went wrong 😢');
-      }
-    } finally {
-      setPriceLoading(false);
-    }
-  };
 
   // ── justify handler ───────────────────────────────────
   const handleJustify = () => {
@@ -182,8 +191,6 @@ export default function HomeScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLogConfirmMsg('');
-    setPriceResult(null);
-    setPriceError('');
 
     Animated.sequence([
       Animated.spring(buttonScale, { toValue: 0.92, useNativeDriver: true, speed: 50 }),
@@ -199,7 +206,7 @@ export default function HomeScreen() {
         note: note.trim() || undefined,
         personality,
         spendable,
-        priceCheck: priceResult ?? undefined,
+        smartCtx,
       });
       setResponse(result);
       setIsLoading(false);
@@ -212,7 +219,6 @@ export default function HomeScreen() {
         personality,
         message: result.message,
         emoji: result.emoji,
-        verdict: priceResult?.verdict,
         timestamp: new Date().toISOString(),
         isLogged: false,
       };
@@ -253,7 +259,6 @@ export default function HomeScreen() {
     setIsLogging(true);
     if (!fromJustify) {
       setResponse(null);
-      setPriceResult(null);
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -269,7 +274,6 @@ export default function HomeScreen() {
         personality,
         message: msg,
         emoji: '📝',
-        verdict: priceResult?.verdict,
         timestamp: new Date().toISOString(),
         isLogged: true,
       };
@@ -279,6 +283,11 @@ export default function HomeScreen() {
     // Add to period expenses
     const updated = await addExpense(parsedPrice, moneyCtx.payFrequency);
     setPeriodExpenses(updated);
+
+    // Update aura score
+    if (spendable) {
+      await updateAuraScore(spendable.purchasePct);
+    }
 
     // Budget alert for premium users
     if (hasMoneyCtx) {
@@ -381,25 +390,6 @@ export default function HomeScreen() {
 
             <View style={styles.buttonFlex}>
               <TouchableOpacity
-                onPress={handlePriceCheck}
-                activeOpacity={0.8}
-                disabled={!itemName.trim() || parsedPrice <= 0 || priceLoading || checksRemaining === 0}
-              >
-                <LinearGradient
-                  colors={checksRemaining === 0 ? ['#9ca3af', '#6b7280'] : ['#F59E0B', '#D97706'] as [string, string]}
-                  style={styles.button}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.buttonText}>
-                    {priceLoading ? '🔍 ...' : '🛍️ prices'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.buttonFlex}>
-              <TouchableOpacity
                 onPress={() => handleLogExpense(false)}
                 activeOpacity={0.8}
                 disabled={!itemName.trim() || parsedPrice <= 0 || isLogging}
@@ -459,23 +449,6 @@ export default function HomeScreen() {
             </>
           )}
 
-          {priceResult && !isLoading && !response && (
-            <GradientCard>
-              <PriceCheckResultCard result={priceResult} />
-              {checksRemaining !== null && (
-                <Text style={styles.remainingText}>
-                  {checksRemaining > 0
-                    ? `${checksRemaining} check${checksRemaining === 1 ? '' : 's'} left today ✨`
-                    : "no checks left today — come back tomorrow bestie 💅"}
-                </Text>
-              )}
-            </GradientCard>
-          )}
-
-          {priceError ? (
-            <Text style={styles.warnText}>{priceError}</Text>
-          ) : null}
-
           {logConfirmMsg ? (
             <GradientCard>
               <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
@@ -505,7 +478,7 @@ export default function HomeScreen() {
                 </Text>
               )}
               <View style={{ marginTop: 8 }}>
-                <AuraMeter price={parsedPrice} spendable={spendable} />
+                <AuraMeter price={parsedPrice} spendable={spendable} theme={auraTheme} />
               </View>
             </CollapsibleSection>
           )}
@@ -544,7 +517,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 28,
     paddingTop: 60,
     paddingBottom: 100,
   },
@@ -609,30 +582,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     fontStyle: 'italic',
-  },
-  // mini button (price check)
-  miniButton: {
-    backgroundColor: COLORS.pinkHot,
-    borderRadius: 16,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  miniButtonDisabled: {
-    opacity: 0.45,
-  },
-  miniButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  remainingText: {
-    fontSize: 11,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    fontWeight: '600',
-    marginBottom: 8,
   },
   justifiesRemainingText: {
     fontSize: 12,

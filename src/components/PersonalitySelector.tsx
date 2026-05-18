@@ -12,30 +12,33 @@ const MODE_CATS: Record<PersonalityMode, any> = {
 interface PersonalitySelectorProps {
   selected: PersonalityMode;
   onSelect: (mode: PersonalityMode) => void;
+  lockedModes?: PersonalityMode[];
 }
 
-export default function PersonalitySelector({ selected, onSelect }: PersonalitySelectorProps) {
+export default function PersonalitySelector({ selected, onSelect, lockedModes = [] }: PersonalitySelectorProps) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>who’s justifying today? 👇</Text>
       {PERSONALITY_OPTIONS.map((opt) => {
         const isActive = selected === opt.key;
+        const isLocked = lockedModes.includes(opt.key);
         return (
           <TouchableOpacity
             key={opt.key}
-            style={[styles.option, isActive && styles.optionActive]}
+            style={[styles.option, isActive && styles.optionActive, isLocked && styles.optionLocked]}
             onPress={() => onSelect(opt.key)}
             activeOpacity={0.7}
           >
-            <Image source={MODE_CATS[opt.key]} style={styles.catImg} />
+            <Image source={MODE_CATS[opt.key]} style={[styles.catImg, isLocked && styles.catImgLocked]} />
             <View style={styles.optionText}>
               <Text style={[styles.optionLabel, isActive && styles.optionLabelActive]}>
                 {opt.label}
               </Text>
               <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
-                {opt.desc}
+                {isLocked ? '💎 premium only — upgrade to unlock' : opt.desc}
               </Text>
             </View>
+            {isLocked && <Text style={styles.lockBadge}>🔒</Text>}
           </TouchableOpacity>
         );
       })}
@@ -73,6 +76,9 @@ const styles = StyleSheet.create({
     height: 52,
     resizeMode: 'contain',
   },
+  catImgLocked: {
+    opacity: 0.4,
+  },
   optionText: {
     flex: 1,
   },
@@ -84,6 +90,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  optionLocked: {
+    opacity: 0.65,
+  },
+  lockBadge: {
+    fontSize: 18,
   },
   optionLabel: {
     fontSize: 16,

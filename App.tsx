@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -11,16 +12,41 @@ import HomeScreen from './src/screens/HomeScreen';
 import BillsScreen from './src/screens/BillsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import SpendLogScreen from './src/screens/SpendLogScreen';
+import ToolsScreen from './src/screens/ToolsScreen';
+import CanIAffordItScreen from './src/screens/CanIAffordItScreen';
+import CostPerUseScreen from './src/screens/CostPerUseScreen';
+import TreatYourselfScreen from './src/screens/TreatYourselfScreen';
+import SubscriptionAuditScreen from './src/screens/SubscriptionAuditScreen';
+import SavingsJarScreen from './src/screens/SavingsJarScreen';
+import InsightsScreen from './src/screens/InsightsScreen';
+import SavingsGoalsScreen from './src/screens/SavingsGoalsScreen';
 import { PaywallProvider } from './src/context/PaywallContext';
 import OnboardingScreen, { ONBOARDING_KEY } from './src/screens/OnboardingScreen';
 
 const Tab = createBottomTabNavigator();
+const ToolsStack = createNativeStackNavigator();
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
     <View style={{ alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ fontSize: focused ? 26 : 22 }}>{emoji}</Text>
     </View>
+  );
+}
+
+function ToolsNavigator() {
+  return (
+    <ToolsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ToolsStack.Screen name="ToolsHub" component={ToolsScreen} />
+      <ToolsStack.Screen name="CanIAffordIt" component={CanIAffordItScreen} />
+      <ToolsStack.Screen name="CostPerUse" component={CostPerUseScreen} />
+      <ToolsStack.Screen name="TreatYourself" component={TreatYourselfScreen} />
+      <ToolsStack.Screen name="SubscriptionAudit" component={SubscriptionAuditScreen} />
+      <ToolsStack.Screen name="SavingsJar" component={SavingsJarScreen} />
+      <ToolsStack.Screen name="Insights" component={InsightsScreen} />
+      <ToolsStack.Screen name="SavingsGoals" component={SavingsGoalsScreen} />
+    </ToolsStack.Navigator>
   );
 }
 
@@ -92,9 +118,20 @@ export default function App() {
             component={HomeScreen}
             listeners={{ tabPress: () => Haptics.selectionAsync() }}
             options={{
-              tabBarLabel: 'justify ✨',
+              tabBarLabel: 'justify',
               tabBarIcon: ({ focused }) => (
                 <TabIcon emoji="💸" focused={focused} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="SpendLog"
+            component={SpendLogScreen}
+            listeners={{ tabPress: () => Haptics.selectionAsync() }}
+            options={{
+              tabBarLabel: 'log',
+              tabBarIcon: ({ focused }) => (
+                <TabIcon emoji="📝" focused={focused} />
               ),
             }}
           />
@@ -103,7 +140,7 @@ export default function App() {
             component={BillsScreen}
             listeners={{ tabPress: () => Haptics.selectionAsync() }}
             options={{
-              tabBarLabel: 'bills 💌',
+              tabBarLabel: 'bills',
               tabBarIcon: ({ focused }) => (
                 <TabIcon emoji="📅" focused={focused} />
               ),
@@ -114,9 +151,20 @@ export default function App() {
             component={HistoryScreen}
             listeners={{ tabPress: () => Haptics.selectionAsync() }}
             options={{
-              tabBarLabel: 'diary 📜',
+              tabBarLabel: 'diary',
               tabBarIcon: ({ focused }) => (
                 <TabIcon emoji="🦋" focused={focused} />
+              ),
+            }}
+          />
+          <Tab.Screen
+            name="Tools"
+            component={ToolsNavigator}
+            listeners={{ tabPress: () => Haptics.selectionAsync() }}
+            options={{
+              tabBarLabel: 'tools',
+              tabBarIcon: ({ focused }) => (
+                <TabIcon emoji="🛠️" focused={focused} />
               ),
             }}
           />

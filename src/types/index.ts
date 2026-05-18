@@ -6,6 +6,19 @@ export type PayFrequency = 'weekly' | 'biweekly' | 'monthly';
 
 export type PriceVerdict = 'steal' | 'fair' | 'overpriced';
 
+export type SpendCategory =
+  | 'shopping'
+  | 'food'
+  | 'beauty'
+  | 'shoes'
+  | 'health'
+  | 'tech'
+  | 'fun'
+  | 'home'
+  | 'misc';
+
+export type AuraTheme = 'default' | 'clean-girl' | 'y2k' | 'dark-academia';
+
 // ── Money context ──────────────────────────────────────────
 export interface MoneyContext {
   payFrequency: PayFrequency;
@@ -22,17 +35,15 @@ export interface SpendableResult {
   purchasePct: number; // purchase as % of spendable-per-period
 }
 
-// ── Price check ────────────────────────────────────────────
-export interface PriceCheckOption {
-  store: string;
-  price: number;
-  note?: string;
-}
-
-export interface PriceCheckResult {
-  verdict: PriceVerdict;
-  range: { low: number; high: number };
-  topOptions: PriceCheckOption[];
+// ── Smart context (real user data woven into responses) ────
+export interface SmartJustificationContext {
+  topCategory?: SpendCategory;
+  topCategoryAmount?: number;
+  daysSinceLastSplurge?: number;
+  savingsJarTotal?: number;
+  treatBudgetRemaining?: number;
+  weekTotal?: number;
+  auraScore?: number;
 }
 
 // ── AI request / response ──────────────────────────────────
@@ -41,9 +52,8 @@ export interface JustificationRequest {
   price: number;
   note?: string;
   personality: PersonalityMode;
-  // optional enrichments
   spendable?: SpendableResult;
-  priceCheck?: PriceCheckResult;
+  smartCtx?: SmartJustificationContext;
 }
 
 export interface JustificationResponse {
@@ -92,10 +102,71 @@ export interface HistoryEntry {
   verdict?: PriceVerdict;
   timestamp: string;      // ISO date string
   isLogged?: boolean;     // true if user logged as actual expense
+  category?: SpendCategory; // spend category for logged entries
 }
 
 // ── Expense tracking ───────────────────────────────────────
 export interface PeriodExpenses {
   periodStart: string;    // ISO date of current pay period start
   total: number;          // running total for this period
+  byCategory?: Partial<Record<SpendCategory, number>>;
+}
+
+// ── Budget category limits (premium) ──────────────────────
+export interface BudgetCategoryLimit {
+  category: SpendCategory;
+  limit: number; // 0 = no limit per period
+}
+
+// ── Cost-per-use tracker ───────────────────────────────────
+export interface CostPerUseItem {
+  id: string;
+  name: string;
+  emoji: string;
+  price: number;
+  uses: number;
+  dateAdded: string; // ISO
+}
+
+// ── Subscriptions ──────────────────────────────────────────
+export interface Subscription {
+  id: string;
+  name: string;
+  emoji: string;
+  monthlyCost: number;
+  category: 'streaming' | 'fitness' | 'beauty' | 'food' | 'software' | 'other';
+}
+
+// ── Savings jar ────────────────────────────────────────────
+export interface SavingsJarEntry {
+  id: string;
+  itemName: string;
+  price: number;
+  timestamp: string; // ISO
+  note?: string;
+}
+
+// ── Treat yourself budget ──────────────────────────────────
+export interface TreatYourselfBudget {
+  monthlyLimit: number;
+  spent: number;
+  periodStart: string; // ISO — resets each pay period
+}
+
+// ── Aura score ─────────────────────────────────────────────
+export interface AuraScore {
+  score: number; // 0–1000
+  lastUpdated: string; // ISO
+}
+
+// ── Savings goals ──────────────────────────────────────────
+export interface SavingsGoal {
+  id: string;
+  name: string;
+  emoji: string;
+  targetAmount: number;
+  savedAmount: number;
+  deadline?: string; // ISO date string
+  createdAt: string; // ISO
+  isComplete: boolean;
 }

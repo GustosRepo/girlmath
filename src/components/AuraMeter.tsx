@@ -1,41 +1,45 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, GRADIENTS } from '../utils/theme';
-import { AuraLevel, SpendableResult } from '../types';
+import { COLORS, GRADIENTS, AURA_THEMES } from '../utils/theme';
+import { AuraLevel, SpendableResult, AuraTheme } from '../types';
 
 interface AuraMeterProps {
   /** Fallback: plain price (used when no money context) */
   price: number;
   /** If money context provided, use purchase-pct for aura */
   spendable?: SpendableResult;
+  /** Optional aura theme (premium) */
+  theme?: AuraTheme;
 }
 
 function getAura(
   price: number,
   spendable?: SpendableResult,
+  theme?: AuraTheme,
 ): { level: AuraLevel; label: string; emoji: string; colors: string[]; fill: number } {
+  const themeColors = AURA_THEMES[theme ?? 'default'];
   // When we have money context, use % of spendable
   if (spendable) {
     const pct = spendable.purchasePct;
     if (spendable.perPeriod <= 0 || pct > 15)
-      return { level: 'broke', label: 'broke aura', emoji: '💀', colors: GRADIENTS.auraBroke, fill: 1 };
+      return { level: 'broke', label: 'broke aura', emoji: '💀', colors: themeColors.broke, fill: 1 };
     if (pct > 5)
-      return { level: 'healing', label: 'healing era', emoji: '🫶', colors: GRADIENTS.auraHeal, fill: pct / 20 };
-    return { level: 'glowing', label: 'financially glowing', emoji: '✨', colors: GRADIENTS.auraGlow, fill: pct / 20 };
+      return { level: 'healing', label: 'healing era', emoji: '🫶', colors: themeColors.heal, fill: pct / 20 };
+    return { level: 'glowing', label: 'financially glowing', emoji: '✨', colors: themeColors.glow, fill: pct / 20 };
   }
 
   // Fallback: simple price thresholds
   if (price <= 30)
-    return { level: 'glowing', label: 'financially glowing', emoji: '✨', colors: GRADIENTS.auraGlow, fill: price / 150 };
+    return { level: 'glowing', label: 'financially glowing', emoji: '✨', colors: themeColors.glow, fill: price / 150 };
   if (price <= 100)
-    return { level: 'healing', label: 'healing era', emoji: '🫶', colors: GRADIENTS.auraHeal, fill: price / 150 };
-  return { level: 'broke', label: 'broke aura', emoji: '💀', colors: GRADIENTS.auraBroke, fill: 1 };
+    return { level: 'healing', label: 'healing era', emoji: '🫶', colors: themeColors.heal, fill: price / 150 };
+  return { level: 'broke', label: 'broke aura', emoji: '💀', colors: themeColors.broke, fill: 1 };
 }
 
-export default function AuraMeter({ price, spendable }: AuraMeterProps) {
+export default function AuraMeter({ price, spendable, theme }: AuraMeterProps) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const aura = getAura(price, spendable);
+  const aura = getAura(price, spendable, theme);
 
   useEffect(() => {
     Animated.loop(

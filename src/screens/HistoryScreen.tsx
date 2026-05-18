@@ -16,8 +16,9 @@ import { COLORS, GRADIENTS } from '../utils/theme';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
-import { HistoryEntry, PriceVerdict } from '../types';
-import { loadHistory, clearHistory } from '../utils/storage';
+import { HistoryEntry, PriceVerdict, PeriodExpenses, SpendCategory } from '../types';
+import { loadHistory, clearHistory, loadPeriodExpenses, loadState } from '../utils/storage';
+import { SPEND_CATEGORIES } from '../utils/theme';
 import { fmt$ } from '../utils/finance';
 import { hasPremium } from '../utils/purchases';
 import { usePaywall } from '../context/PaywallContext';
@@ -47,12 +48,23 @@ function timeAgo(isoString: string): string {
 export default function HistoryScreen() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isPremium, setIsPremium] = useState(false);
+  const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses | null>(null);
   const { showPaywall } = usePaywall();
 
   useFocusEffect(
     useCallback(() => {
-      loadHistory().then(setHistory);
-      hasPremium().then(setIsPremium);
+      (async () => {
+        const [h, premium, savedState] = await Promise.all([
+          loadHistory(),
+          hasPremium(),
+          loadState(),
+        ]);
+        const freq = savedState.moneyContext?.payFrequency ?? 'biweekly';
+        const period = await loadPeriodExpenses(freq);
+        setHistory(h);
+        setIsPremium(premium);
+        setPeriodExpenses(period);
+      })();
     }, []),
   );
 
@@ -178,6 +190,25 @@ export default function HistoryScreen() {
 
   const insightsData = isPremium ? generateInsights() : null;
 
+  // Spending streak (extracted for free + premium display)
+  const spendingStreak = (() => {
+    if (loggedEntries.length < 2) return 0;
+    const uniqueDays = [...new Set(loggedEntries.map((e) => e.timestamp.slice(0, 10)))].sort();
+    let streak = 1;
+    for (let i = uniqueDays.length - 1; i > 0; i--) {
+      const d1 = new Date(uniqueDays[i]);
+      const d2 = new Date(uniqueDays[i - 1]);
+      if (d1.getTime() - d2.getTime() <= 86400000 * 1.5) streak++;
+      else break;
+    }
+    return streak >= 2 ? streak : 0;
+  })();
+
+  // Cap history for free users
+  const FREE_HISTORY_CAP = 7;
+  const displayedHistory = isPremium ? history : history.slice(0, FREE_HISTORY_CAP);
+  const hasLockedEntries = !isPremium && history.length > FREE_HISTORY_CAP;
+
   const handleClear = () => {
     Alert.alert('clear history?', 'this can\'t be undone bestie 👀', [
       { text: 'nah keep it', style: 'cancel' },
@@ -201,6 +232,44 @@ export default function HistoryScreen() {
       >
         <Text style={styles.title}>📜 spending diary</Text>
         <Text style={styles.subtitle}>every purchase has a story ✨</Text>
+
+        {/* Streak badge */}
+        {spendingStreak >= 2 && (
+          <GradientCard>
+            <View style={styles.streakRow}>
+              <Text style={styles.streakFire}>🔥</Text>
+              <View>
+                <Text style={styles.streakTitle}>{spendingStreak}-day spending streak</Text>
+                <Text style={styles.streakSub}>iconic, truly iconic</Text>
+              </View>
+            </View>
+          </GradientCard>
+        )}
+
+        {/* Pay period summary (premium) */}
+        {isPremium && periodExpenses && periodExpenses.total > 0 && (
+          <GradientCard>
+            <Text style={styles.sectionTitle}>📅 this pay period</Text>
+            <Text style={styles.periodTotal}>{fmt$(periodExpenses.total)} spent</Text>
+            {periodExpenses.byCategory && Object.keys(periodExpenses.byCategory).length > 0 && (
+              <View style={styles.catBreakdown}>
+                {(Object.entries(periodExpenses.byCategory) as [SpendCategory, number][])
+                  .sort(([, a], [, b]) => b - a)
+                  .slice(0, 5)
+                  .map(([cat, amount]) => {
+                    const catInfo = SPEND_CATEGORIES.find(c => c.key === cat);
+                    return (
+                      <View key={cat} style={styles.catRow}>
+                        <Text style={styles.catEmoji}>{catInfo?.emoji ?? '🛍️'}</Text>
+                        <Text style={styles.catLabel}>{catInfo?.label ?? cat}</Text>
+                        <Text style={styles.catAmount}>{fmt$(amount)}</Text>
+                      </View>
+                    );
+                  })}
+              </View>
+            )}
+          </GradientCard>
+        )}
 
         {/* Stats card */}
         {history.length > 0 && (
@@ -276,7 +345,7 @@ export default function HistoryScreen() {
         )}
 
         {/* History entries */}
-        {history.map((entry) => (
+        {displayedHistory.map((entry) => (
           <GradientCard key={entry.id}>
             <View style={styles.entryHeader}>
               <Text style={styles.entryEmoji}>{entry.emoji}</Text>
@@ -324,6 +393,24 @@ export default function HistoryScreen() {
             </Text>
           </GradientCard>
         ))}
+
+        {/* Locked history upgrade prompt */}
+        {hasLockedEntries && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); showPaywall(); }}
+          >
+            <GradientCard>
+              <View style={styles.lockedBanner}>
+                <Text style={styles.lockedBannerEmoji}>🔒</Text>
+                <Text style={styles.lockedBannerText}>
+                  {history.length - FREE_HISTORY_CAP} more entries hidden
+                </Text>
+                <Text style={styles.lockedBannerSub}>upgrade to see your full history 💎</Text>
+              </View>
+            </GradientCard>
+          </TouchableOpacity>
+        )}
 
         {history.length === 0 && (
           <GradientCard>
@@ -543,5 +630,80 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  // Streak
+  streakRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  streakFire: {
+    fontSize: 36,
+  },
+  streakTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: COLORS.textPrimary,
+  },
+  streakSub: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    fontStyle: 'italic',
+  },
+  // Pay period summary
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+  },
+  periodTotal: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: COLORS.pinkHot,
+    marginBottom: 10,
+  },
+  catBreakdown: {
+    gap: 6,
+  },
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catEmoji: {
+    fontSize: 16,
+    width: 24,
+  },
+  catLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textPrimary,
+  },
+  catAmount: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+  },
+  // Locked history banner
+  lockedBanner: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  lockedBannerEmoji: {
+    fontSize: 28,
+    marginBottom: 4,
+  },
+  lockedBannerText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  lockedBannerSub: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    fontStyle: 'italic',
   },
 });

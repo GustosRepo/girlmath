@@ -170,3 +170,46 @@ export async function maybeSendBudgetAlert(spentPct: number): Promise<void> {
     }
   }
 }
+
+// ── Weekly recap notification (every Sunday 9am) ──────────
+const WEEKLY_RECAP_ID = 'weekly-recap-notif';
+
+export async function scheduleWeeklyRecap(totalSpent: number, topCategory?: string): Promise<void> {
+  const granted = await requestNotifPermission();
+  if (!granted) return;
+
+  // Cancel any existing weekly recap
+  try {
+    await Notifications.cancelScheduledNotificationAsync(WEEKLY_RECAP_ID);
+  } catch {}
+
+  const body = topCategory
+    ? `you spent ${fmt$(totalSpent)} this week — mostly on ${topCategory} 💅`
+    : `you spent ${fmt$(totalSpent)} this week bestie 👀`;
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      identifier: WEEKLY_RECAP_ID,
+      content: {
+        title: '📊 your weekly spending recap',
+        body,
+        sound: 'default',
+        ...(Platform.OS === 'android' ? { channelId: 'bills' } : {}),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 1, // Sunday
+        hour: 9,
+        minute: 0,
+      },
+    });
+  } catch (e) {
+    console.warn('[notifs] weekly recap schedule failed', e);
+  }
+}
+
+export async function cancelWeeklyRecap(): Promise<void> {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(WEEKLY_RECAP_ID);
+  } catch {}
+}

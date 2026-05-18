@@ -2,18 +2,6 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
-const { priceCheckHandler } = require('./priceCheck');
-
-// ── Warn on missing env vars instead of crashing ──
-if (!process.env.SERPAPI_KEY) {
-  console.warn('⚠️  WARNING: SERPAPI_KEY is not set. Price checks will fail.');
-}
-if (!process.env.MAX_CHECKS_PER_USER_PER_DAY) {
-  console.warn('⚠️  WARNING: MAX_CHECKS_PER_USER_PER_DAY not set — defaulting to 3.');
-}
-if (!process.env.CACHE_TTL_HOURS) {
-  console.warn('⚠️  WARNING: CACHE_TTL_HOURS not set — defaulting to 12.');
-}
 
 const app = express();
 app.use(cors());
@@ -37,9 +25,6 @@ app.get('/health', (_req, res) => {
 
 // Legal pages (Privacy Policy & Terms of Use)
 app.use('/legal', express.static(path.join(__dirname, 'legal')));
-
-// Price check endpoint
-app.post('/api/price-check', priceCheckHandler);
 
 const PORT = process.env.PORT || 3456;
 app.listen(Number(PORT), '0.0.0.0', () => {

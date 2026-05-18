@@ -3,7 +3,7 @@ import {
   JustificationResponse,
   PersonalityMode,
   SpendableResult,
-  PriceCheckResult,
+  SmartJustificationContext,
 } from '../types';
 
 // ── helpers ────────────────────────────────────────────────
@@ -173,65 +173,6 @@ function budgetAddon(mode: PersonalityMode, s: SpendableResult): string {
   return pick(moderate);
 }
 
-// ── price-check add-ons ────────────────────────────────────
-function priceCheckAddon(mode: PersonalityMode, pc: PriceCheckResult): string {
-  const cheapest = pc.topOptions.length > 0
-    ? pc.topOptions.reduce((a, b) => (a.price < b.price ? a : b))
-    : null;
-
-  if (pc.verdict === 'overpriced') {
-    const alt = cheapest ? ` ${cheapest.store} has it for $${cheapest.price}!` : '';
-    const overpriced: Record<PersonalityMode, string[]> = {
-      responsible: [
-        `\n\n🛍️ price check says it's a bit overpriced (range $${pc.range.low}–$${pc.range.high}).${alt} maybe shop around? 🧠`,
-        `\n\n🛍️ hmm this is above average ($${pc.range.low}–$${pc.range.high}).${alt} a quick search could save you some coins! 💰`,
-        `\n\n🛍️ the price check gods say this is on the pricier side ($${pc.range.low}–$${pc.range.high}).${alt} worth comparing bestie 📊`,
-        `\n\n🛍️ just looked it up and you might be paying a bit more than usual ($${pc.range.low}–$${pc.range.high}).${alt} knowledge is power queen 🧠✨`,
-        `\n\n🛍️ heads up — others have it cheaper ($${pc.range.low}–$${pc.range.high}).${alt} maybe worth a quick price match? 💕`,
-      ],
-      delulu: [
-        `\n\n🛍️ ok yes technically it's "overpriced" but convenience has VALUE and time is MONEY so really you're saving 💅`,
-        `\n\n🛍️ some stores have it cheaper ($${pc.range.low}–$${pc.range.high}) but like… you found it HERE and that's called FATE 🔮`,
-        `\n\n🛍️ is it "overpriced"? sure. am I gonna let NUMBERS dictate my purchasing decisions? absolutely not 👑`,
-        `\n\n🛍️ yeah it's above average ($${pc.range.low}–$${pc.range.high}) but you're above average so it matches your energy ✨`,
-        `\n\n🛍️ price check says "overpriced" I say "premium shopping experience for a premium girl" 💅🦄`,
-      ],
-      chaotic: [
-        `\n\n🛍️ overpriced?? who CARES. but if you want the same chaos for less,${alt || ' check around!'} 🔥`,
-        `\n\n🛍️ LMAO it's overpriced and we literally don't care. but${alt ? ` fyi` + alt : ' others have it cheaper.'} not that it matters 😈`,
-        `\n\n🛍️ range is $${pc.range.low}–$${pc.range.high} and yeah you're above it. call it a PREMIUM TAX for being spontaneous 💸`,
-        `\n\n🛍️ overpriced just means you're paying for the EXPERIENCE of buying it right now. that has value bestie 🎪🔥`,
-        `\n\n🛍️ sure it costs more than average ($${pc.range.low}–$${pc.range.high}). some call it overpriced, I call it MAIN CHARACTER PRICING 👑💸`,
-      ],
-    };
-    return pick(overpriced[mode]);
-  }
-
-  if (pc.verdict === 'steal') {
-    const steals = [
-      `\n\n🛍️ GIRL this is a STEAL (range $${pc.range.low}–$${pc.range.high}). not buying it would be financially irresponsible tbh ✨`,
-      `\n\n🛍️ bestie you found a DEAL (range $${pc.range.low}–$${pc.range.high}). this is below average pricing. grab it before someone else does 🏃‍♀️💨`,
-      `\n\n🛍️ price check confirms: this is UNDER market price ($${pc.range.low}–$${pc.range.high}). you're basically making money by spending money 🧮✨`,
-      `\n\n🛍️ this price is BELOW the usual range ($${pc.range.low}–$${pc.range.high}). universe said "here's a discount for being cute" 🦄💕`,
-      `\n\n🛍️ omg this is cheaper than average ($${pc.range.low}–$${pc.range.high})?? if you don't buy it someone else will and then you'll be MAD 😤✨`,
-      `\n\n🛍️ STEAL ALERT 🚨 this is below the $${pc.range.low}–$${pc.range.high} range. the shopping gods are smiling on you rn 🙏💅`,
-      `\n\n🛍️ you're paying BELOW market ($${pc.range.low}–$${pc.range.high}). this isn't just a purchase, it's a certified W 🏆`,
-    ];
-    return pick(steals);
-  }
-
-  // fair price
-  const fair = [
-    `\n\n🛍️ price looks fair (range $${pc.range.low}–$${pc.range.high}). solid choice bestie 👍`,
-    `\n\n🛍️ this is right in the normal range ($${pc.range.low}–$${pc.range.high}). you're paying what it's worth — no cap 📊`,
-    `\n\n🛍️ price check says this is fair ($${pc.range.low}–$${pc.range.high}). not overpaying, not a mega deal, just vibes ✅💕`,
-    `\n\n🛍️ pretty standard pricing ($${pc.range.low}–$${pc.range.high}). you're not getting ripped off which is always cute 💖`,
-    `\n\n🛍️ right in line with what everyone else pays ($${pc.range.low}–$${pc.range.high}). market-rate queen 📈✨`,
-    `\n\n🛍️ the price is fair ($${pc.range.low}–$${pc.range.high}). nothing sketchy, nothing insane. a normal, healthy purchase 🌱💕`,
-  ];
-  return pick(fair);
-}
-
 // ── reaction / emoji maps ──────────────────────────────────
 const reactionSets: Record<PersonalityMode, string[][]> = {
   delulu: [
@@ -258,17 +199,176 @@ const emojiMap: Record<PersonalityMode, string[]> = {
 };
 
 // ── public API ─────────────────────────────────────────────
+// ── smart personalization addon ───────────────────────────
+// Picks the single most relevant real-user-data fact and weaves it in naturally.
+// This is what makes responses feel like actual AI — because it knows YOUR numbers.
+function smartAddon(mode: PersonalityMode, ctx: SmartJustificationContext): string {
+  const candidates: string[] = [];
+
+  // savings jar — user has skipped purchases to save money
+  if (ctx.savingsJarTotal && ctx.savingsJarTotal >= 10) {
+    const j = Math.round(ctx.savingsJarTotal);
+    candidates.push(...({
+      delulu: [
+        `you've saved $${j} by skipping other things — that's a fund specifically for THIS moment 🫙✨`,
+        `your savings jar has $${j} in it from pure discipline. you pre-paid for this queen 🫙💅`,
+      ],
+      responsible: [
+        `btw you've saved $${j} in your jar by skipping other purchases 🫙 this is exactly what that's for ✅`,
+        `your discipline jar: $${j} — using some here is the whole point of saving 💖📊`,
+      ],
+      chaotic: [
+        `$${j} in your savings jar just SITTING THERE screaming to be deployed 🫙💸 answer the call`,
+        `your jar has $${j} and it's bored. this is the mission. SEND IT 🔥`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  // days since last splurge — reward the restraint
+  if (ctx.daysSinceLastSplurge !== undefined && ctx.daysSinceLastSplurge >= 3) {
+    const d = ctx.daysSinceLastSplurge;
+    candidates.push(...({
+      delulu: [
+        `${d} days since your last splurge?? you've been financially FASTING bestie, this is earned 👑`,
+        `${d} days of restraint??? the universe literally owes you this 🔮`,
+      ],
+      responsible: [
+        `you haven't splurged in ${d} days — great discipline! you've earned a mindful treat 💖`,
+        `${d} days without a splurge = you've built up credit with yourself. cash it in ✅📊`,
+      ],
+      chaotic: [
+        `${d} days clean from chaos?? the streak ends NOW and it ends GLORIOUSLY 🔥💸`,
+        `${d} days without spending?? we need to fix this immediately 💅🌪️`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  // treat budget remaining — this is literally what fun money is for
+  if (ctx.treatBudgetRemaining && ctx.treatBudgetRemaining >= 5) {
+    const t = Math.round(ctx.treatBudgetRemaining);
+    candidates.push(...({
+      delulu: [
+        `your treat budget has $${t} left just BEGGING to fulfill its destiny 🎀✨`,
+        `$${t} in fun money literally exists for this exact situation bestie 💕`,
+      ],
+      responsible: [
+        `you've got $${t} left in your treat budget this period — this is exactly what it's for 🎯💖`,
+        `treat budget check: $${t} available. completely valid use ✅`,
+      ],
+      chaotic: [
+        `$${t} in treat budget = $${t} in OBLIGATION TO SLAY 💅 you basically have to`,
+        `$${t} of treat money collecting dust?? not on my watch 🔥💸`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  // top category this period — they have a taste and it's consistent
+  if (ctx.topCategory && ctx.topCategoryAmount && ctx.topCategoryAmount > 0) {
+    const cat = ctx.topCategory;
+    const amt = Math.round(ctx.topCategoryAmount);
+    candidates.push(...({
+      delulu: [
+        `${cat} is literally your top category at $${amt} this period — you have TASTE and I respect it 👑`,
+        `$${amt} on ${cat} already? you're committed to the aesthetic and I love that 💅`,
+      ],
+      responsible: [
+        `your top category is ${cat} at $${amt} this period — just staying aware as you decide 📊`,
+        `${cat} is where most of your money goes ($${amt}) — worth factoring in 🧠`,
+      ],
+      chaotic: [
+        `already top ${cat} spender at $${amt}?? CONSISTENT QUEEN. keep the throne 🔥`,
+        `${cat} leader, $${amt} deep, and STILL going?? we love to see it 💸👑`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  // aura score context — high score = earned it, low score = needs help
+  if (ctx.auraScore !== undefined && ctx.auraScore >= 400) {
+    const s = ctx.auraScore;
+    const vibe = s >= 800 ? 'glowing era' : s >= 600 ? 'healing era' : 'balanced era';
+    candidates.push(...({
+      delulu: [
+        `your aura is at ${s}/1000 right now (${vibe}) — queens in their ${vibe} deserve nice things 👑✨`,
+        `${s} aura points means you're thriving and thriving girlies invest in themselves 🌟`,
+      ],
+      responsible: [
+        `aura check: ${s}/1000 — ${vibe} energy. stay consistent and it keeps climbing 📈💖`,
+        `with ${s} aura points you're clearly making smart moves. this can be one of them ✅`,
+      ],
+      chaotic: [
+        `${s} aura points?? she's BUILT different. the score justifies it 🔥💅`,
+        `${vibe} with ${s} points — absolute power move to buy this right now 💸✨`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  // low week total — they've been good, they have room
+  if (ctx.weekTotal !== undefined && ctx.weekTotal >= 0 && ctx.weekTotal < 50) {
+    const w = Math.round(ctx.weekTotal);
+    candidates.push(...({
+      delulu: [
+        `only $${w} spent this whole week?? your wallet has been RESTING, time to wake her up 💅✨`,
+        `$${w} total this week so far — she's been quiet. give her something to celebrate 🎉`,
+      ],
+      responsible: [
+        `you've only spent $${w} this week — well within range. this fits the budget 📊💕`,
+        `$${w} week total? very much in check. room for this 100% ✅`,
+      ],
+      chaotic: [
+        `$${w} this week?? barely a dent!! GO OFF bestie there's so much runway 🔥💸`,
+        `only $${w} so far this week. we have budget to BURN 😈💅`,
+      ],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (candidates.length === 0) return '';
+  return `\n\nalso: ${pick(candidates)}`;
+}
+
 export function generateJustification(req: JustificationRequest): JustificationResponse {
-  const { itemName, price, personality, spendable, priceCheck } = req;
+  const { itemName, price, personality, spendable, smartCtx } = req;
 
   let message = pick(baseTpls[personality])(itemName, price);
 
   if (spendable) message += budgetAddon(personality, spendable);
-  if (priceCheck) message += priceCheckAddon(personality, priceCheck);
+  if (smartCtx) message += smartAddon(personality, smartCtx);
 
   return {
     message,
     emoji: pick(emojiMap[personality]),
     reactions: pick(reactionSets[personality]),
   };
+}
+
+// ── Girl Math Moments ──────────────────────────────────────
+const GIRL_MATH_MOMENTS = [
+  "if you return something, that's free money. spending that free money is literally saving",
+  "buying the expensive version means you won't need to replace it — it actually saves money",
+  "if you split the cost over every day you'll own it, it's basically free",
+  "if it's on sale you're LOSING money by NOT buying it",
+  "the outfit was expensive but the confidence boost is priceless, which means it was worth it",
+  "buying two of the same thing in different colors counts as one purchase because it's the same item",
+  "if you pay with cash it doesn't count as spending because the money is already gone",
+  "it's not an impulse buy if you thought about it for more than 10 minutes",
+  "spending money on self-care is an investment in your mental health, which is priceless",
+  "if you didn't eat out all week the money you saved covers this completely",
+  "the shipping fee doesn't count if you add one more item to get free shipping",
+  "buying the bundle is actually cheaper per item so you're saving money by spending more",
+  "if it sparks joy it basically pays for itself emotionally",
+  "treating yourself after a hard day is cheaper than therapy",
+  "if you've been wanting it for over a year, it's a considered purchase not an impulse",
+  "the more expensive bag will last longer so over time it's actually the budget choice",
+  "if you can pay for it with one day's work it's basically nothing",
+  "buying it now saves you from buying something worse later when you're desperate",
+  "wearing it once to the event makes it a costume write-off in your mind",
+  "the early bird sale means you'd be wasting money waiting for full price",
+  "if your friend has it and you share, the cost is technically halved",
+  "buying it before a price increase is smart financial planning",
+  "the points you earned basically make it free at some point in the future",
+  "a limited edition item is an investment — you could sell it for more later",
+  "if you manifest it hard enough, the universe will cover the cost somehow",
+];
+
+export function getGirlMathMoment(): string {
+  return GIRL_MATH_MOMENTS[Math.floor(Math.random() * GIRL_MATH_MOMENTS.length)];
 }
