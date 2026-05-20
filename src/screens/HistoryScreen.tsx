@@ -274,22 +274,19 @@ export default function HistoryScreen() {
         {/* Stats card */}
         {history.length > 0 && (
           <GradientCard>
-            <View style={styles.statsRow}>
+            <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{history.length}</Text>
                 <Text style={styles.statLabel}>justifications</Text>
               </View>
-              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{fmt$(totalSpent)}</Text>
                 <Text style={styles.statLabel}>total "researched"</Text>
               </View>
-              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{steals}</Text>
                 <Text style={styles.statLabel}>steals found</Text>
               </View>
-              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: '#16A34A' }]}>{loggedCount}</Text>
                 <Text style={styles.statLabel}>logged</Text>
@@ -462,12 +459,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
   // Stats
-  statsRow: {
+  statsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
+    flexWrap: 'wrap',
   },
-  statItem: { alignItems: 'center', flex: 1 },
+  statItem: { alignItems: 'center', width: '50%', paddingVertical: 10 },
   statValue: {
     fontSize: 20,
     fontWeight: '800',

@@ -27,7 +27,7 @@ import {
 } from '../types';
 import { generateJustification } from '../utils/girlMathEngine';
 import { computeSpendable, fmt$ } from '../utils/finance';
-import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore } from '../utils/storage';
+import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore, addToSavingsJar } from '../utils/storage';
 import * as StoreReview from 'expo-store-review';
 import { usePaywall } from '../context/PaywallContext';
 import { hasPremium } from '../utils/purchases';
@@ -101,13 +101,39 @@ export default function HomeScreen() {
   const [placeholderIdx, setPlaceholderIdx] = useState(
     () => Math.floor(Math.random() * ITEM_PLACEHOLDERS.length),
   );
+  // captured at justify time so "log this too" works after inputs clear
+  const pendingLogRef = React.useRef<{ itemName: string; price: number } | null>(null);
+  // jar toast: amount offered after justify (null = hidden, 0 = added)
+  const [jarToast, setJarToast] = useState<number | null>(null);
+  const [jarAdded, setJarAdded] = useState(false);
+  // nudge shown when logging cold without justifying
+  const [showJarNudge, setShowJarNudge] = useState(false);
 
   // ── clear inputs after action ────────────────────────
   const clearInputs = () => {
     setItemName('');
     setPrice('');
     setNote('');
+    setJarToast(null);
+    setJarAdded(false);
+    setShowJarNudge(false);
     setPlaceholderIdx((i) => (i + 1) % ITEM_PLACEHOLDERS.length);
+  };
+
+  // ── add jar toast amount to savings jar ───────────────
+  const handleAddToJar = async () => {
+    if (!jarToast || jarAdded) return;
+    const name = pendingLogRef.current?.itemName ?? itemName.trim();
+    const amount = jarToast;
+    await addToSavingsJar({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      itemName: name,
+      price: amount,
+      timestamp: new Date().toISOString(),
+      note: 'girl math savings \u2728',
+    });
+    setJarAdded(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   // ── derived ───────────────────────────────────────────
@@ -175,6 +201,14 @@ export default function HomeScreen() {
           auraScore: auraScoreData.score,
         });
       })();
+      // clear result when navigating away so screen is fresh on return
+      return () => {
+        setResponse(null);
+        setLogConfirmMsg('');
+        setJarToast(null);
+        setJarAdded(false);
+        setShowJarNudge(false);
+      };
     }, []),
   );
 
@@ -208,8 +242,18 @@ export default function HomeScreen() {
         spendable,
         smartCtx,
       });
+      // capture for the "log this too" button before inputs clear
+      pendingLogRef.current = { itemName: itemName.trim(), price: parsedPrice };
       setResponse(result);
       setIsLoading(false);
+
+      // Offer jar savings as a tappable toast (not auto-added)
+      const savingsPct = spendable ? Math.max(0, (100 - spendable.purchasePct) / 100) : 0.5;
+      const jarAmount = Math.round(parsedPrice * savingsPct * 100) / 100;
+      if (jarAmount > 0) {
+        setJarToast(jarAmount);
+        setJarAdded(false);
+      }
 
       // Save to history
       const entry: HistoryEntry = {
@@ -255,7 +299,9 @@ export default function HomeScreen() {
   ];
 
   const handleLogExpense = async (fromJustify = false) => {
-    if (!itemName.trim() || parsedPrice <= 0) return;
+    const logName = fromJustify ? (pendingLogRef.current?.itemName ?? itemName.trim()) : itemName.trim();
+    const logPrice = fromJustify ? (pendingLogRef.current?.price ?? parsedPrice) : parsedPrice;
+    if (!logName || logPrice <= 0) return;
     setIsLogging(true);
     if (!fromJustify) {
       setResponse(null);
@@ -264,13 +310,14 @@ export default function HomeScreen() {
 
     const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
     setLogConfirmMsg(msg);
+    if (!fromJustify) setShowJarNudge(true);
 
     // Save to history with isLogged flag
     if (!fromJustify) {
       const entry: HistoryEntry = {
         id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        itemName: itemName.trim(),
-        price: parsedPrice,
+        itemName: logName,
+        price: logPrice,
         personality,
         message: msg,
         emoji: '📝',
@@ -281,7 +328,7 @@ export default function HomeScreen() {
     }
 
     // Add to period expenses
-    const updated = await addExpense(parsedPrice, moneyCtx.payFrequency);
+    const updated = await addExpense(logPrice, moneyCtx.payFrequency);
     setPeriodExpenses(updated);
 
     // Update aura score
@@ -435,6 +482,20 @@ export default function HomeScreen() {
                 itemName={itemName}
                 price={parsedPrice}
               />
+              {/* Jar toast */}
+              {jarToast !== null && (
+                <TouchableOpacity
+                  onPress={handleAddToJar}
+                  activeOpacity={jarAdded ? 1 : 0.7}
+                  style={[styles.jarToastBtn, jarAdded && styles.jarToastAdded]}
+                >
+                  <Text style={styles.jarToastText}>
+                    {jarAdded
+                      ? `🫙 $${jarToast.toFixed(2)} added to your savings jar!`
+                      : `🫙 tap to save $${jarToast.toFixed(2)} in girl math savings`}
+                  </Text>
+                </TouchableOpacity>
+              )}
               {!logConfirmMsg && (
                 <TouchableOpacity
                   onPress={() => handleLogExpense(true)}
@@ -452,6 +513,11 @@ export default function HomeScreen() {
           {logConfirmMsg ? (
             <GradientCard>
               <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
+              {showJarNudge && (
+                <Text style={styles.jarNudgeText}>
+                  psst — justify first next time to earn girl math savings 🫙
+                </Text>
+              )}
             </GradientCard>
           ) : null}
 
@@ -656,6 +722,33 @@ const styles = StyleSheet.create({
     color: '#16A34A',
     textAlign: 'center',
     paddingVertical: 4,
+  },
+  jarNudgeText: {
+    fontSize: 12,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  jarToastBtn: {
+    alignSelf: 'stretch',
+    backgroundColor: 'rgba(192,132,252,0.15)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(192,132,252,0.35)',
+  },
+  jarToastAdded: {
+    backgroundColor: 'rgba(192,132,252,0.08)',
+    borderColor: 'rgba(192,132,252,0.2)',
+  },
+  jarToastText: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
   },
   loadingCatWrap: {
     alignItems: 'center',

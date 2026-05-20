@@ -154,11 +154,12 @@ export default function InsightsScreen() {
                       },
                     ]} />
                   </View>
-                  <Text style={[styles.dayLabel, i % 5 !== 0 && styles.dayLabelHidden]}>
-                    {d.label}
-                  </Text>
                 </View>
               ))}
+            </View>
+            <View style={styles.chartFooter}>
+              <Text style={styles.chartFooterLabel}>30d ago</Text>
+              <Text style={styles.chartFooterLabel}>today</Text>
             </View>
             {daily.every(d => d.total === 0) && (
               <Text style={styles.emptyHint}>no logged expenses yet 👻 start logging to see your chart</Text>
@@ -224,6 +225,8 @@ const styles = StyleSheet.create({
   dayBar: { width: '100%', borderRadius: 3, minHeight: 3 },
   dayLabel: { fontSize: 8, color: COLORS.textMuted, marginTop: 4, fontWeight: '600' },
   dayLabelHidden: { opacity: 0 },
+  chartFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  chartFooterLabel: { fontSize: 10, color: COLORS.textMuted, fontWeight: '600' },
   emptyHint: { fontSize: 13, color: COLORS.textMuted, textAlign: 'center', fontStyle: 'italic', marginTop: 4 },
   // category bars
   catRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
