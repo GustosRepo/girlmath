@@ -19,10 +19,6 @@
     },
     "production": {
       "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://girlmath-production-600b.up.railway.app",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_GYgmzRjQwdBahUUzqTqjrtEMuWq"
-      },
       "ios": {
         "distribution": "store"
       }

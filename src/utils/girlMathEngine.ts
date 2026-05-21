@@ -96,7 +96,8 @@ const baseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string>>
 
 // ── budget-aware add-ons ───────────────────────────────────
 function budgetAddon(mode: PersonalityMode, s: SpendableResult): string {
-  const pct = s.purchasePct;
+  // Guard against NaN/Infinity from edge-case computeSpendable results
+  const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
 
   // negative spendable
   if (s.perPeriod <= 0) {

@@ -8,6 +8,8 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setupAndroidChannel } from './src/utils/notifications';
 import { initRevenueCat } from './src/utils/purchases';
+import { initializeAds } from './src/utils/ads';
+import { runStorageMigrations } from './src/utils/storage';
 import HomeScreen from './src/screens/HomeScreen';
 import BillsScreen from './src/screens/BillsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -58,9 +60,12 @@ export default function App() {
   useEffect(() => {
     setupAndroidChannel();
     try { initRevenueCat(); } catch {}   // 🔑 RevenueCat init (may fail in Expo Go)
-    AsyncStorage.getItem(ONBOARDING_KEY).then((val) => {
+    try { initializeAds(); } catch {}    // 📢 AdMob init (may fail in Expo Go)
+    (async () => {
+      await runStorageMigrations();
+      const val = await AsyncStorage.getItem(ONBOARDING_KEY);
       setHasOnboarded(!!val);
-    });
+    })().catch(() => setHasOnboarded(false));
   }, []);
 
   // Still reading AsyncStorage — render nothing to avoid flash
@@ -100,6 +105,7 @@ export default function App() {
               height: 85,
               paddingBottom: 28,
               paddingTop: 8,
+              paddingHorizontal: 8,
               borderTopLeftRadius: 24,
               borderTopRightRadius: 24,
               position: 'absolute',

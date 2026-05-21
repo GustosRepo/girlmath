@@ -1,7 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Share,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
@@ -33,6 +35,9 @@ function auraLabel(score: number): { emoji: string; label: string; color: string
 
 export default function ToolsScreen() {
   const navigation = useNavigation<any>();
+  const auraShotRef = useRef<ViewShot>(null);
+  const momentShotRef = useRef<ViewShot>(null);
+
   const [auraScore, setAuraScore] = useState<AuraScore>({ score: 500, lastUpdated: '' });
   const [moment, setMoment] = useState(getGirlMathMoment());
   const [jarTotal, setJarTotal] = useState(0);
@@ -66,20 +71,24 @@ export default function ToolsScreen() {
     setMoment(getGirlMathMoment());
   };
 
+  const handleShareAura = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const uri = await (auraShotRef.current as any)?.capture?.();
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your aura score 💖' });
+      }
+    } catch {}
+  };
+
   const handleShareMoment = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const aura = auraLabel(auraScore.score);
-    const msg = [
-      `✨ girl math moment ✨`,
-      ``,
-      `“${moment}”`,
-      ``,
-      `my girl math aura: ${auraScore.score}/1000 ${aura.emoji}`,
-      `status: ${aura.label}`,
-      ``,
-      `girl math AI 💸`,
-    ].join('\n');
-    await Share.share({ message: msg });
+    try {
+      const uri = await (momentShotRef.current as any)?.capture?.();
+      if (uri && await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Share your girl math moment 💅' });
+      }
+    } catch {}
   };
 
   const badgeFor = (key: string): string => {
@@ -99,59 +108,50 @@ export default function ToolsScreen() {
           <Text style={styles.subtitle}>your financial bestie toolkit ✨</Text>
 
           {/* Aura score */}
-          <GradientCard>
-            <View style={styles.auraRow}>
-              <Text style={styles.auraEmoji}>{aura.emoji}</Text>
-              <View style={styles.auraInfo}>
-                <Text style={[styles.auraLabel, { color: aura.color }]}>{aura.label}</Text>
-                <Text style={styles.auraScore}>{auraScore.score} aura points</Text>
+          <ViewShot ref={auraShotRef} options={{ format: 'png', quality: 1 }}>
+            <GradientCard>
+              <Text style={styles.shotBrand}>💖 GirlMath</Text>
+              <View style={styles.auraRow}>
+                <Text style={styles.auraEmoji}>{aura.emoji}</Text>
+                <View style={styles.auraInfo}>
+                  <Text style={[styles.auraLabel, { color: aura.color }]}>{aura.label}</Text>
+                  <Text style={styles.auraScore}>{auraScore.score} aura points</Text>
+                </View>
+                <View style={[styles.auraMini, { borderColor: aura.color }]}>
+                  <Text style={[styles.auraMiniNum, { color: aura.color }]}>{auraScore.score}</Text>
+                </View>
               </View>
-              <View style={[styles.auraMini, { borderColor: aura.color }]}>
-                <Text style={[styles.auraMiniNum, { color: aura.color }]}>{auraScore.score}</Text>
+              <View style={styles.auraBar}>
+                <View style={[styles.auraFill, {
+                  width: `${(auraScore.score / 1000) * 100}%` as any,
+                  backgroundColor: aura.color,
+                }]} />
               </View>
-            </View>
-            <View style={styles.auraBar}>
-              <View style={[styles.auraFill, {
-                width: `${(auraScore.score / 1000) * 100}%` as any,
-                backgroundColor: aura.color,
-              }]} />
-            </View>
-            <View style={styles.auraFooter}>
               <Text style={styles.auraHint}>score updates when you log expenses ✨</Text>
-              <TouchableOpacity
-                onPress={async () => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  await Share.share({
-                    message: [
-                      `${aura.emoji} my girl math aura score ${aura.emoji}`,
-                      ``,
-                      `${auraScore.score} / 1000`,
-                      `status: ${aura.label}`,
-                      ``,
-                      `girl math AI 💸`,
-                    ].join('\n'),
-                  });
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.auraShareText}>📤 share</Text>
-              </TouchableOpacity>
-            </View>
-          </GradientCard>
+              <Text style={styles.shotWatermark}>girlmath app · your bestie for bad financial decisions 💅</Text>
+            </GradientCard>
+          </ViewShot>
+          <TouchableOpacity onPress={handleShareAura} style={styles.cardShareBtn} activeOpacity={0.8}>
+            <Text style={styles.auraShareText}>📤 share aura</Text>
+          </TouchableOpacity>
 
           {/* Girl math moment */}
-          <GradientCard>
-            <Text style={styles.momentTitle}>💅 girl math moment</Text>
-            <Text style={styles.momentText}>"{moment}"</Text>
-            <View style={styles.momentBtns}>
-              <TouchableOpacity onPress={handleNewMoment} style={styles.momentBtn} activeOpacity={0.8}>
-                <Text style={styles.momentBtnText}>✨ new moment</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleShareMoment} style={styles.momentShareBtn} activeOpacity={0.8}>
-                <Text style={styles.momentShareText}>📤 share</Text>
-              </TouchableOpacity>
-            </View>
-          </GradientCard>
+          <ViewShot ref={momentShotRef} options={{ format: 'png', quality: 1 }}>
+            <GradientCard>
+              <Text style={styles.shotBrand}>💖 GirlMath</Text>
+              <Text style={styles.momentTitle}>💅 girl math moment</Text>
+              <Text style={styles.momentText}>"{moment}"</Text>
+              <Text style={styles.shotWatermark}>girlmath app · your bestie for bad financial decisions 💅</Text>
+            </GradientCard>
+          </ViewShot>
+          <View style={styles.momentBtns}>
+            <TouchableOpacity onPress={handleNewMoment} style={styles.momentBtn} activeOpacity={0.8}>
+              <Text style={styles.momentBtnText}>✨ new moment</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShareMoment} style={styles.momentShareBtn} activeOpacity={0.8}>
+              <Text style={styles.momentShareText}>📤 share</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Tool cards */}
           <Text style={styles.toolsHeader}>your tools 🛠️</Text>
@@ -209,6 +209,9 @@ const styles = StyleSheet.create({
   auraFill: { height: '100%', borderRadius: 4 },
   auraHint: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' },
   auraFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardShareBtn: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 4, paddingVertical: 4, paddingHorizontal: 8 },
+  shotBrand: { fontSize: 18, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 10, letterSpacing: 0.5 },
+  shotWatermark: { fontSize: 11, color: COLORS.textMuted, fontStyle: 'italic', textAlign: 'center', marginTop: 12 },
   auraShareText: { fontSize: 12, fontWeight: '800', color: COLORS.textSecondary },
   momentTitle: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 10 },
   momentText: { fontSize: 15, color: COLORS.textSecondary, lineHeight: 22, fontStyle: 'italic', marginBottom: 14 },

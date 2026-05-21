@@ -3,10 +3,10 @@
 ---
 
 ## 🔁 Core Migration
-- [ ] Remove price search feature entirely
-- [ ] Remove `PriceCheckResultCard` component
-- [ ] Remove `priceCheck.ts` util and backend route
-- [ ] Replace price search screen with **Spend Log screen** (category + amount + item name → personality reaction)
+- [x] Remove price search feature entirely
+- [x] Remove `PriceCheckResultCard` component
+- [x] Remove `priceCheck.ts` util and backend route
+- [x] Replace price search screen with **Spend Log screen** (category + amount + item name → personality reaction)
 
 ---
 

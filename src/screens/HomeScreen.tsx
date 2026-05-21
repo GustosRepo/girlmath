@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Animated,
   Image,
 } from 'react-native';
+import { BannerAd, BannerAdSize, AdUnitIds, useInterstitialAd } from '../utils/ads';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -92,6 +93,12 @@ export default function HomeScreen() {
   const hasMoneyCtx = moneyCtx.payAmount > 0;
   const [justifyCount, setJustifyCount] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
+  const [isPremium, setIsPremium] = useState(false);
+  const { show: showInterstitial } = useInterstitialAd();
+
+  useEffect(() => {
+    hasPremium().then(setIsPremium).catch(() => {});
+  }, []);
 
   // ── expense logging ───────────────────────────────────
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
@@ -234,57 +241,67 @@ export default function HomeScreen() {
     setIsLoading(true);
 
     setTimeout(async () => {
-      const result = generateJustification({
-        itemName: itemName.trim(),
-        price: parsedPrice,
-        note: note.trim() || undefined,
-        personality,
-        spendable,
-        smartCtx,
-      });
-      // capture for the "log this too" button before inputs clear
-      pendingLogRef.current = { itemName: itemName.trim(), price: parsedPrice };
-      setResponse(result);
-      setIsLoading(false);
+      try {
+        const result = generateJustification({
+          itemName: itemName.trim(),
+          price: parsedPrice,
+          note: note.trim() || undefined,
+          personality,
+          spendable,
+          smartCtx,
+        });
+        // capture for the "log this too" button before inputs clear
+        pendingLogRef.current = { itemName: itemName.trim(), price: parsedPrice };
+        setResponse(result);
 
-      // Offer jar savings as a tappable toast (not auto-added)
-      const savingsPct = spendable ? Math.max(0, (100 - spendable.purchasePct) / 100) : 0.5;
-      const jarAmount = Math.round(parsedPrice * savingsPct * 100) / 100;
-      if (jarAmount > 0) {
-        setJarToast(jarAmount);
-        setJarAdded(false);
+        // Offer jar savings as a tappable toast (not auto-added)
+        const savingsPct = spendable ? Math.max(0, (100 - spendable.purchasePct) / 100) : 0.5;
+        const jarAmount = Math.round(parsedPrice * savingsPct * 100) / 100;
+        if (jarAmount > 0) {
+          setJarToast(jarAmount);
+          setJarAdded(false);
+        }
+
+        // Save to history
+        const entry: HistoryEntry = {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          itemName: itemName.trim(),
+          price: parsedPrice,
+          personality,
+          message: result.message,
+          emoji: result.emoji,
+          timestamp: new Date().toISOString(),
+          isLogged: false,
+        };
+        await addHistory(entry);
+
+        // Justify counter → nudge paywall after FREE_JUSTIFIES uses
+        const count = await incrementJustifyCount();
+        setJustifyCount(count);
+        if (count >= FREE_JUSTIFIES) {
+          // Small delay so the response animates in first
+          setTimeout(() => showPaywall(), 1800);
+        } else if (!isPremium && count === FREE_JUSTIFIES - 1) {
+          // Show interstitial after 2nd free justify (one before paywall nudge)
+          setTimeout(() => { try { showInterstitial(); } catch {} }, 1500);
+        }
+
+        // Lifetime counter → ask for review after 5th total justify
+        try {
+          const total = await incrementTotalJustifyCount();
+          if (total === 5 && await StoreReview.hasAction()) {
+            setTimeout(() => StoreReview.requestReview(), 2000);
+          }
+        } catch {}
+
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+        // Clear inputs after a brief moment so user sees result
+        setTimeout(() => clearInputs(), 500);
+      } catch {
+        // Fail silently — result may not show but app won't freeze
+      } finally {
+        setIsLoading(false);
       }
-
-      // Save to history
-      const entry: HistoryEntry = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        itemName: itemName.trim(),
-        price: parsedPrice,
-        personality,
-        message: result.message,
-        emoji: result.emoji,
-        timestamp: new Date().toISOString(),
-        isLogged: false,
-      };
-      await addHistory(entry);
-
-      // Justify counter → nudge paywall after FREE_JUSTIFIES uses
-      const count = await incrementJustifyCount();
-      setJustifyCount(count);
-      if (count >= FREE_JUSTIFIES) {
-        // Small delay so the response animates in first
-        setTimeout(() => showPaywall(), 1800);
-      }
-
-      // Lifetime counter → ask for review after 5th total justify
-      const total = await incrementTotalJustifyCount();
-      if (total === 5 && await StoreReview.hasAction()) {
-        setTimeout(() => StoreReview.requestReview(), 2000);
-      }
-
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
-      // Clear inputs after a brief moment so user sees result
-      setTimeout(() => clearInputs(), 500);
     }, 800 + Math.random() * 700);
   };
 
@@ -312,42 +329,45 @@ export default function HomeScreen() {
     setLogConfirmMsg(msg);
     if (!fromJustify) setShowJarNudge(true);
 
-    // Save to history with isLogged flag
-    if (!fromJustify) {
-      const entry: HistoryEntry = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        itemName: logName,
-        price: logPrice,
-        personality,
-        message: msg,
-        emoji: '📝',
-        timestamp: new Date().toISOString(),
-        isLogged: true,
-      };
-      await addHistory(entry);
-    }
+    try {
+      // Save to history with isLogged flag
+      if (!fromJustify) {
+        const entry: HistoryEntry = {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+          itemName: logName,
+          price: logPrice,
+          personality,
+          message: msg,
+          emoji: '📝',
+          timestamp: new Date().toISOString(),
+          isLogged: true,
+        };
+        await addHistory(entry);
+      }
 
-    // Add to period expenses
-    const updated = await addExpense(logPrice, moneyCtx.payFrequency);
-    setPeriodExpenses(updated);
+      // Add to period expenses
+      const updated = await addExpense(logPrice, moneyCtx.payFrequency);
+      setPeriodExpenses(updated);
 
-    // Update aura score
-    if (spendable) {
-      await updateAuraScore(spendable.purchasePct);
-    }
+      // Update aura score
+      if (spendable) {
+        await updateAuraScore(spendable.purchasePct);
+      }
 
-    // Budget alert for premium users
-    if (hasMoneyCtx) {
-      const spendableAmt = computeSpendable(moneyCtx, 0, updated.total).perPeriod + updated.total;
-      if (spendableAmt > 0) {
-        const spentPct = (updated.total / spendableAmt) * 100;
-        const premium = await hasPremium();
-        if (premium) {
-          maybeSendBudgetAlert(spentPct);
+      // Budget alert for premium users
+      if (hasMoneyCtx) {
+        const spendableAmt = computeSpendable(moneyCtx, 0, updated.total).perPeriod + updated.total;
+        if (spendableAmt > 0) {
+          const spentPct = (updated.total / spendableAmt) * 100;
+          const premium = await hasPremium();
+          if (premium) {
+            maybeSendBudgetAlert(spentPct);
+          }
         }
       }
-    }
+    } catch {}
 
+    // Always clean up UI — runs even if storage fails
     setTimeout(() => {
       setIsLogging(false);
       clearInputs();
@@ -567,8 +587,19 @@ export default function HomeScreen() {
             <Text style={styles.modeBadgeHint}>change in settings ⚙️</Text>
           </View>
 
+          {/* ── Banner Ad (free users only) ──────────── */}
+          {!isPremium && BannerAd && (
+            <View style={styles.adContainer}>
+              <BannerAd
+                unitId={AdUnitIds.banner}
+                size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
+                requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+              />
+            </View>
+          )}
+
           <View style={styles.footer}>
-            <Text style={styles.footerText}>made with 💖 and zero financial literacy</Text>
+            <Text style={styles.footerText}>made with love 💖</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -758,6 +789,11 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     resizeMode: 'contain',
+  },
+  adContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 4,
   },
   footer: {
     alignItems: 'center',

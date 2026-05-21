@@ -30,7 +30,9 @@ const VERDICT_BADGE: Record<PriceVerdict, { emoji: string; color: string }> = {
 };
 
 function timeAgo(isoString: string): string {
-  const diff = Date.now() - new Date(isoString).getTime();
+  const ts = new Date(isoString).getTime();
+  if (!isoString || isNaN(ts)) return '';
+  const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'just now';
   if (mins < 60) return `${mins}m ago`;
@@ -120,7 +122,7 @@ export default function HistoryScreen() {
 
     // ── Monthly projection ──
     const oldestTs = new Date(loggedEntries[loggedEntries.length - 1].timestamp).getTime();
-    const daysCovered = Math.max(1, (now - oldestTs) / 86400000);
+    const daysCovered = Math.max(1, isNaN(oldestTs) ? 1 : (now - oldestTs) / 86400000);
     const dailyRate = totalLogged / daysCovered;
     const monthlyProjection = dailyRate * 30;
     if (daysCovered >= 3) {
