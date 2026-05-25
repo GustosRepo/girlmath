@@ -13,6 +13,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import ScreenTransition from '../components/ScreenTransition';
 import { COLORS, GRADIENTS, SPEND_CATEGORIES } from '../utils/theme';
 import { SpendCategory, PersonalityMode, HistoryEntry, PeriodExpenses, MoneyContext } from '../types';
@@ -37,6 +38,7 @@ const SPEND_REACTIONS: Record<PersonalityMode, (cat: string, item: string, price
 
 export default function SpendLogScreen() {
   const { showPaywall } = usePaywall();
+  const { t } = useTranslation();
 
   const [selectedCategory, setSelectedCategory] = useState<SpendCategory>('misc');
   const [amount, setAmount] = useState('');
@@ -94,7 +96,7 @@ export default function SpendLogScreen() {
     ]).start();
 
     const catInfo = SPEND_CATEGORIES.find(c => c.key === selectedCategory)!;
-    const displayItem = itemName.trim() || catInfo.label;
+    const displayItem = itemName.trim() || t(`categories.${selectedCategory}` as any);
 
     // Generate personality reaction
     setTimeout(async () => {
@@ -161,22 +163,22 @@ export default function SpendLogScreen() {
           >
             {/* ── Header ─────────────────────────────────── */}
             <View style={styles.header}>
-              <Text style={styles.title}>💸 spend log</Text>
-              <Text style={styles.subtitle}>track what you actually bought</Text>
+              <Text style={styles.title}>{t('spend_log.title')}</Text>
+              <Text style={styles.subtitle}>{t('spend_log.subtitle')}</Text>
             </View>
 
             {/* ── Period total pill ──────────────────────── */}
             {periodExpenses.total > 0 && (
               <View style={styles.periodPill}>
                 <Text style={styles.periodPillText}>
-                  💰 logged this period: <Text style={styles.periodPillAmount}>${periodExpenses.total.toFixed(2)}</Text>
-                </Text>
+                {t('spend_log.logged_period', { amount: periodExpenses.total.toFixed(2) })}
+              </Text>
               </View>
             )}
 
             {/* ── Category picker ────────────────────────── */}
             <GradientCard>
-              <Text style={styles.cardTitle}>📂 what category?</Text>
+              <Text style={styles.cardTitle}>{t('spend_log.category_title')}</Text>
               <View style={styles.categoryGrid}>
                 {SPEND_CATEGORIES.map((cat) => {
                   const isLocked = !isPremium && cat.key !== 'misc';
@@ -195,7 +197,7 @@ export default function SpendLogScreen() {
                     >
                       <Text style={styles.categoryEmoji}>{isLocked ? '🔒' : cat.emoji}</Text>
                       <Text style={[styles.categoryLabel, isSelected && styles.categoryLabelActive]}>
-                        {cat.label}
+                        {t(`categories.${cat.key}` as any)}
                       </Text>
                       {catTotal > 0 && !isLocked && (
                         <Text style={styles.categoryTotal}>${catTotal.toFixed(0)}</Text>
@@ -206,7 +208,7 @@ export default function SpendLogScreen() {
               </View>
               {!isPremium && (
                 <TouchableOpacity onPress={() => showPaywall()} activeOpacity={0.7}>
-                  <Text style={styles.unlockHint}>🔒 unlock all categories with premium ✨</Text>
+                  <Text style={styles.unlockHint}>{t('spend_log.unlock_categories')}</Text>
                 </TouchableOpacity>
               )}
             </GradientCard>
@@ -214,12 +216,11 @@ export default function SpendLogScreen() {
             {/* ── Inputs ─────────────────────────────────── */}
             <GradientCard>
               <Text style={styles.cardTitle}>
-                {SPEND_CATEGORIES.find(c => c.key === selectedCategory)?.emoji}{' '}
-                how much did you spend?
+                {t('spend_log.how_much', { emoji: SPEND_CATEGORIES.find(c => c.key === selectedCategory)?.emoji ?? '' })}
               </Text>
               <InputRow
                 icon="💰"
-                placeholder="amount"
+                placeholder={t('spend_log.amount_placeholder')}
                 value={amount}
                 onChangeText={(t: string) => { setAmount(t); setResponse(null); }}
                 keyboardType="decimal-pad"
@@ -227,7 +228,7 @@ export default function SpendLogScreen() {
               />
               <InputRow
                 icon="🏷️"
-                placeholder="item name (optional)"
+                placeholder={t('spend_log.item_placeholder')}
                 value={itemName}
                 onChangeText={(t: string) => { setItemName(t); setResponse(null); }}
               />
@@ -247,7 +248,7 @@ export default function SpendLogScreen() {
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.buttonText}>
-                    {isLogging ? '✨ logging...' : '📝 log this spend'}
+                    {isLogging ? t('spend_log.logging') : t('spend_log.log_btn')}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -266,13 +267,13 @@ export default function SpendLogScreen() {
                 message={response.message}
                 emoji={response.emoji}
                 reactions={response.reactions}
-                itemName={itemName.trim() || (SPEND_CATEGORIES.find(c => c.key === selectedCategory)?.label ?? '')}
+                itemName={itemName.trim() || t(`categories.${selectedCategory}` as any)}
                 price={parsedAmount}
               />
             )}
 
             <View style={styles.footer}>
-              <Text style={styles.footerText}>every dollar logged is a dollar owned 💅</Text>
+              <Text style={styles.footerText}>{t('spend_log.footer')}</Text>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>

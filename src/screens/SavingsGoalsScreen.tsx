@@ -4,6 +4,7 @@ import {
   TextInput, Share, Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -31,6 +32,7 @@ function estimatedDate(remaining: number, weeklyAvg: number): string | null {
 
 export default function SavingsGoalsScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [jarTotal, setJarTotal] = useState(0);
   const [weeklyJarAvg, setWeeklyJarAvg] = useState(0);
@@ -101,10 +103,10 @@ export default function SavingsGoalsScreen() {
   };
 
   const handleDelete = (goalId: string) => {
-    Alert.alert('delete goal?', 'this cannot be undone', [
-      { text: 'cancel', style: 'cancel' },
+    Alert.alert(t('goals.delete_title'), t('goals.delete_body'), [
+      { text: t('goals.delete_cancel'), style: 'cancel' },
       {
-        text: 'delete', style: 'destructive',
+        text: t('goals.delete_confirm'), style: 'destructive',
         onPress: async () => {
           const updated = goals.filter(g => g.id !== goalId);
           setGoals(updated);
@@ -143,26 +145,26 @@ export default function SavingsGoalsScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-            <Text style={styles.backText}>‹ back</Text>
+            <Text style={styles.backText}>{t('goals.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>🎯 savings goals</Text>
-          <Text style={styles.subtitle}>set a goal, skip a thing, get there ✨</Text>
+          <Text style={styles.title}>{t('goals.title')}</Text>
+          <Text style={styles.subtitle}>{t('goals.subtitle')}</Text>
 
           {/* Jar balance pill */}
           <GradientCard>
             <View style={styles.jarRow}>
               <Text style={styles.jarEmoji}>🫙</Text>
               <View style={styles.jarInfo}>
-                <Text style={styles.jarLabel}>savings jar balance</Text>
+                <Text style={styles.jarLabel}>{t('goals.jar_label')}</Text>
                 <Text style={styles.jarAmt}>{fmt$(jarTotal)}</Text>
               </View>
               {goals.length > 0 && (
                 <TouchableOpacity onPress={handleShare} style={styles.shareBtn} activeOpacity={0.8}>
-                  <Text style={styles.shareBtnText}>share 📤</Text>
+                    <Text style={styles.shareBtnText}>{t('goals.share_btn')}</Text>
                 </TouchableOpacity>
               )}
             </View>
-            <Text style={styles.jarHint}>allocate your skipped-purchase savings toward goals below ✨</Text>
+            <Text style={styles.jarHint}>{t('goals.jar_hint')}</Text>
           </GradientCard>
 
           {/* Goals list */}
@@ -180,7 +182,7 @@ export default function SavingsGoalsScreen() {
                       <Text style={[styles.goalName, goal.isComplete && styles.goalNameDone]}>
                         {goal.name}
                       </Text>
-                      {goal.isComplete && <Text style={styles.doneBadge}>✅ done</Text>}
+                      {goal.isComplete && <Text style={styles.doneBadge}>{t('goals.done_badge')}</Text>}
                     </View>
                     <Text style={styles.goalAmts}>
                       {fmt$(goal.savedAmount)} / {fmt$(goal.targetAmount)}
@@ -202,20 +204,20 @@ export default function SavingsGoalsScreen() {
                   ]} />
                 </View>
                 <View style={styles.progressMeta}>
-                  <Text style={styles.progressPct}>{Math.round(pct * 100)}% there</Text>
+                  <Text style={styles.progressPct}>{t('goals.pct_there', { pct: Math.round(pct * 100) })}</Text>
                   {!goal.isComplete && remaining > 0 && (
-                    <Text style={styles.progressRemaining}>{fmt$(remaining)} to go</Text>
+                    <Text style={styles.progressRemaining}>{t('goals.to_go', { amount: fmt$(remaining) })}</Text>
                   )}
                 </View>
 
                 {/* Deadline & ETA */}
                 {goal.deadline && !goal.isComplete && (
                   <Text style={styles.deadlineText}>
-                    🗓️ {daysUntilDeadline(goal.deadline)} days until deadline
+                    {t('goals.days_deadline', { n: daysUntilDeadline(goal.deadline) })}
                   </Text>
                 )}
                 {eta && !goal.isComplete && (
-                  <Text style={styles.etaText}>📈 at your current saving pace: ~{eta}</Text>
+                  <Text style={styles.etaText}>{t('goals.eta', { date: eta })}</Text>
                 )}
 
                 {/* Contribute row */}
@@ -224,14 +226,14 @@ export default function SavingsGoalsScreen() {
                     <View style={styles.contributeRow}>
                       <TextInput
                         style={styles.contributeInput}
-                        placeholder="amount"
+                        placeholder={t('goals.contribute_placeholder')}
                         placeholderTextColor={COLORS.textMuted}
                         keyboardType="decimal-pad"
                         value={contributeAmt}
                         onChangeText={setContributeAmt}
                       />
                       <TouchableOpacity onPress={() => handleContribute(goal.id)} style={styles.contributeConfirmBtn} activeOpacity={0.8}>
-                        <Text style={styles.contributeConfirmText}>add 💸</Text>
+                        <Text style={styles.contributeConfirmText}>{t('goals.contribute_add')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => { setContributeId(null); setContributeAmt(''); }} style={styles.cancelBtn}>
                         <Text style={styles.cancelBtnText}>✕</Text>
@@ -243,15 +245,13 @@ export default function SavingsGoalsScreen() {
                       style={styles.contributeBtn}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.contributeBtnText}>+ add savings 🫙</Text>
+                      <Text style={styles.contributeBtnText}>{t('goals.contribute_btn')}</Text>
                     </TouchableOpacity>
                   )
                 )}
 
                 {goal.isComplete && (
-                  <Text style={styles.completeMsg}>
-                    you manifested this bestie 🏆 queen behavior
-                  </Text>
+                  <Text style={styles.completeMsg}>{t('goals.complete_msg')}</Text>
                 )}
               </GradientCard>
             );
@@ -260,7 +260,7 @@ export default function SavingsGoalsScreen() {
           {/* Add goal form */}
           {showAdd ? (
             <GradientCard>
-              <Text style={styles.addTitle}>new goal ✨</Text>
+              <Text style={styles.addTitle}>{t('goals.add_title')}</Text>
 
               {/* Emoji picker */}
               <View style={styles.emojiRow}>
@@ -277,14 +277,14 @@ export default function SavingsGoalsScreen() {
 
               <TextInput
                 style={styles.input}
-                placeholder="what are you saving for? (e.g. Coachella 2027 🎪)"
+                placeholder={t('goals.name_placeholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={goalName}
                 onChangeText={setGoalName}
               />
               <TextInput
                 style={styles.input}
-                placeholder="target amount"
+                placeholder={t('goals.target_placeholder')}
                 placeholderTextColor={COLORS.textMuted}
                 keyboardType="decimal-pad"
                 value={goalTarget}
@@ -292,7 +292,7 @@ export default function SavingsGoalsScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="deadline (optional, e.g. 2027-01-01)"
+                placeholder={t('goals.deadline_placeholder')}
                 placeholderTextColor={COLORS.textMuted}
                 value={goalDeadline}
                 onChangeText={setGoalDeadline}
@@ -300,10 +300,10 @@ export default function SavingsGoalsScreen() {
 
               <View style={styles.formBtns}>
                 <TouchableOpacity onPress={handleAddGoal} style={styles.saveBtn} activeOpacity={0.8}>
-                  <Text style={styles.saveBtnText}>save goal 🎯</Text>
+                  <Text style={styles.saveBtnText}>{t('goals.save_btn')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setShowAdd(false)} style={styles.cancelFormBtn}>
-                  <Text style={styles.cancelFormText}>cancel</Text>
+                  <Text style={styles.cancelFormText}>{t('goals.cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </GradientCard>
@@ -313,7 +313,7 @@ export default function SavingsGoalsScreen() {
               style={styles.addBtn}
               activeOpacity={0.8}
             >
-              <Text style={styles.addBtnText}>+ new goal ✨</Text>
+              <Text style={styles.addBtnText}>{t('goals.add_btn')}</Text>
             </TouchableOpacity>
           )}
 

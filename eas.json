@@ -21,6 +21,9 @@
       "autoIncrement": true,
       "ios": {
         "distribution": "store"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
@@ -30,6 +33,10 @@
         "appleId": "admin@code-wrx.com",
         "ascAppId": "6759740446",
         "appleTeamId": "L9CFTCZ6X5"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "production"
       }
     }
   }

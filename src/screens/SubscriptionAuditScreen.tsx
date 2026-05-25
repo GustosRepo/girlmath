@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -34,6 +35,7 @@ const SUB_EMOJIS = ['📺', '🎵', '🎮', '💻', '🏋️', '💄', '🛒', '
 
 export default function SubscriptionAuditScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [subs, setSubs] = useState<Subscription[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -78,10 +80,10 @@ export default function SubscriptionAuditScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('cancel subscription?', 'removes it from your audit list', [
-      { text: 'keep it', style: 'cancel' },
+    Alert.alert(t('sub_audit.delete_title'), t('sub_audit.delete_body'), [
+      { text: t('sub_audit.delete_keep'), style: 'cancel' },
       {
-        text: 'remove', style: 'destructive', onPress: async () => {
+        text: t('sub_audit.delete_remove'), style: 'destructive', onPress: async () => {
           const updated = subs.filter(s => s.id !== id);
           setSubs(updated);
           await saveSubscriptions(updated);
@@ -103,16 +105,16 @@ export default function SubscriptionAuditScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-              <Text style={styles.backText}>‹ tools</Text>
+              <Text style={styles.backText}>{t('sub_audit.back')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>💳 subscription audit</Text>
-            <Text style={styles.subtitle}>face the truth bestie 👀</Text>
+            <Text style={styles.title}>{t('sub_audit.title')}</Text>
+            <Text style={styles.subtitle}>{t('sub_audit.subtitle')}</Text>
 
             {subs.length > 0 && (
               <GradientCard>
-                <Text style={styles.totalLabel}>total monthly</Text>
+                <Text style={styles.totalLabel}>{t('sub_audit.total_label')}</Text>
                 <Text style={styles.totalValue}>{fmt$(totalMonthly)}</Text>
-                <Text style={styles.yearlyNote}>{fmt$(totalYearly)} per year</Text>
+                <Text style={styles.yearlyNote}>{t('sub_audit.yearly_note', { amount: fmt$(totalYearly) })}</Text>
                 {wasteMoment() !== '' && (
                   <Text style={styles.wasteMoment}>{wasteMoment()}</Text>
                 )}
@@ -124,12 +126,12 @@ export default function SubscriptionAuditScreen() {
               onPress={() => setShowAdd(v => !v)}
               activeOpacity={0.8}
             >
-              <Text style={styles.addBtnText}>{showAdd ? '✕ cancel' : '+ add subscription'}</Text>
+              <Text style={styles.addBtnText}>{showAdd ? t('sub_audit.cancel_btn') : t('sub_audit.add_btn')}</Text>
             </TouchableOpacity>
 
             {showAdd && (
               <GradientCard>
-                <Text style={styles.sectionTitle}>new subscription</Text>
+                <Text style={styles.sectionTitle}>{t('sub_audit.new_sub_title')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiRow}>
                   {SUB_EMOJIS.map(e => (
                     <TouchableOpacity
@@ -145,7 +147,7 @@ export default function SubscriptionAuditScreen() {
                   style={styles.input}
                   value={newName}
                   onChangeText={setNewName}
-                  placeholder="Netflix, Spotify, ClassPass…"
+                  placeholder={t('sub_audit.name_placeholder')}
                   placeholderTextColor={COLORS.textMuted}
                 />
                 <View style={styles.costRow}>
@@ -155,10 +157,10 @@ export default function SubscriptionAuditScreen() {
                     value={newCost}
                     onChangeText={setNewCost}
                     keyboardType="decimal-pad"
-                    placeholder="monthly cost"
+                    placeholder={t('sub_audit.cost_placeholder')}
                     placeholderTextColor={COLORS.textMuted}
                   />
-                  <Text style={styles.perMonth}>/mo</Text>
+                  <Text style={styles.perMonth}>{t('sub_audit.per_month')}</Text>
                 </View>
                 <View style={styles.catRow}>
                   {CATEGORY_OPTIONS.map(cat => (
@@ -167,21 +169,19 @@ export default function SubscriptionAuditScreen() {
                       style={[styles.catPill, newCategory === cat.key && styles.catPillActive]}
                       onPress={() => setNewCategory(cat.key)}
                     >
-                      <Text style={styles.catPillText}>{cat.emoji} {cat.label}</Text>
+                      <Text style={styles.catPillText}>{cat.emoji} {t(`categories.${cat.key}` as any)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <TouchableOpacity style={styles.saveBtn} onPress={handleAdd} activeOpacity={0.8}>
-                  <Text style={styles.saveBtnText}>add subscription 📋</Text>
+                  <Text style={styles.saveBtnText}>{t('sub_audit.save_btn')}</Text>
                 </TouchableOpacity>
               </GradientCard>
             )}
 
             {subs.length === 0 && !showAdd && (
               <GradientCard>
-                <Text style={styles.emptyText}>
-                  no subscriptions logged 💭{'\n'}add everything you're paying for and face the math
-                </Text>
+                <Text style={styles.emptyText}>{t('sub_audit.empty')}</Text>
               </GradientCard>
             )}
 

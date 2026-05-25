@@ -13,6 +13,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import ScreenTransition from '../components/ScreenTransition';
 import { COLORS, GRADIENTS } from '../utils/theme';
 import GradientBackground from '../components/GradientBackground';
@@ -38,10 +40,6 @@ const CATEGORY_OPTIONS: { key: BillCategory; label: string; emoji: string }[] = 
   { key: 'other', label: 'Other', emoji: '💸' },
 ];
 
-function generateId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
 function getDaysUntilDue(dueDay: number): number {
   const today = new Date();
   const currentDay = today.getDate();
@@ -50,13 +48,12 @@ function getDaysUntilDue(dueDay: number): number {
   return lastDay - currentDay + dueDay;
 }
 
-function getDueLabel(dueDay: number): { text: string; urgent: boolean } {
+function getDueLabel(dueDay: number, t: TFunction): { text: string; urgent: boolean } {
   const days = getDaysUntilDue(dueDay);
-  if (days === 0) return { text: 'DUE TODAY 🚨', urgent: true };
-  if (days === 1) return { text: 'due tomorrow!', urgent: true };
-  if (days <= 3) return { text: `due in ${days} days`, urgent: true };
-  if (days <= 7) return { text: `due in ${days} days`, urgent: false };
-  return { text: `due in ${days} days`, urgent: false };
+  if (days === 0) return { text: t('bills.due_today'), urgent: true };
+  if (days === 1) return { text: t('bills.due_tomorrow'), urgent: true };
+  if (days <= 7) return { text: t('bills.due_in_days', { days }), urgent: days <= 3 };
+  return { text: t('bills.due_in_days', { days }), urgent: false };
 }
 
 const FREQ_OPTIONS: { key: PayFrequency; label: string }[] = [
@@ -65,7 +62,12 @@ const FREQ_OPTIONS: { key: PayFrequency; label: string }[] = [
   { key: 'monthly', label: '🗓️ Monthly' },
 ];
 
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
 export default function BillsScreen() {
+  const { t } = useTranslation();
   const [bills, setBills] = useState<BillReminder[]>([]);
   const [showAdd, setShowAdd] = useState(false);
 
@@ -152,11 +154,11 @@ export default function BillsScreen() {
     const parsedAmount = parseFloat(amount);
     const parsedDay = parseInt(dueDay, 10);
     if (!name.trim() || isNaN(parsedAmount) || parsedAmount <= 0) {
-      Alert.alert('oops', 'fill in the name and amount bestie 💅');
+      Alert.alert(t('bills.oops_title'), t('bills.oops_name'));
       return;
     }
     if (isNaN(parsedDay) || parsedDay < 1 || parsedDay > 31) {
-      Alert.alert('oops', 'due day should be 1–31 💅');
+      Alert.alert(t('bills.oops_title'), t('bills.oops_due'));
       return;
     }
     const cat = CATEGORY_OPTIONS.find((c) => c.key === category)!;
@@ -214,10 +216,10 @@ export default function BillsScreen() {
   };
 
   const deleteBill = async (id: string) => {
-    Alert.alert('delete this bill?', 'bestie are you sure?', [
-      { text: 'nah', style: 'cancel' },
+    Alert.alert(t('bills.delete_confirm_title'), t('bills.delete_body'), [
+      { text: t('bills.delete_confirm_no'), style: 'cancel' },
       {
-        text: 'yep delete it',
+        text: t('bills.delete_yes'),
         style: 'destructive',
         onPress: async () => {
           const target = bills.find((b) => b.id === id);
@@ -233,10 +235,10 @@ export default function BillsScreen() {
   };
 
   const resetMonth = async () => {
-    Alert.alert('new month?', 'mark all bills as unpaid for the new month? ✨', [
-      { text: 'not yet', style: 'cancel' },
+    Alert.alert(t('bills.reset_title'), t('bills.reset_body'), [
+      { text: t('bills.reset_no'), style: 'cancel' },
       {
-        text: 'yes reset!',
+        text: t('bills.reset_yes'),
         onPress: async () => {
           const reset = bills.map((b) => ({ ...b, isPaid: false, paidDate: undefined }));
           // Re-schedule all notifications for the new month
@@ -261,8 +263,8 @@ export default function BillsScreen() {
             source={require('../../assets/largecatbillsdue.png')}
             style={styles.headerCat}
           />
-          <Text style={styles.title}>gentle reminders</Text>
-          <Text style={styles.subtitle}>your bills, tracked with love ✨</Text>
+          <Text style={styles.title}>{t('bills.title_screen')}</Text>
+          <Text style={styles.subtitle}>{t('bills.subtitle_screen')}</Text>
         </View>
 
         {/* Summary Card */}
@@ -270,19 +272,19 @@ export default function BillsScreen() {
           <View style={styles.summaryRow}>
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{fmt$(totalMonthly)}</Text>
-              <Text style={styles.summaryLabel}>monthly total</Text>
+              <Text style={styles.summaryLabel}>{t('bills.monthly_total')}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>{fmt$(unpaidTotal)}</Text>
-              <Text style={styles.summaryLabel}>still owed</Text>
+              <Text style={styles.summaryLabel}>{t('bills.still_owed')}</Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.summaryItem}>
               <Text style={styles.summaryValue}>
                 {paidCount}/{bills.length}
               </Text>
-              <Text style={styles.summaryLabel}>paid</Text>
+              <Text style={styles.summaryLabel}>{t('bills.paid_label')}</Text>
             </View>
           </View>
 
@@ -299,8 +301,8 @@ export default function BillsScreen() {
               </View>
               <Text style={styles.progressText}>
                 {paidCount === bills.length && bills.length > 0
-                  ? 'all paid queen! 👑'
-                  : `${Math.round((paidCount / bills.length) * 100)}% done`}
+                  ? t('bills.all_paid')
+                  : t('bills.pct_done', { pct: Math.round((paidCount / bills.length) * 100) })}
               </Text>
             </View>
           )}
@@ -308,18 +310,18 @@ export default function BillsScreen() {
           {/* Spending this period */}
           {hasIncome && (
             <View style={styles.spentPeriodSection}>
-              <Text style={styles.spentPeriodTitle}>💰 spending this period</Text>
+              <Text style={styles.spentPeriodTitle}>{t('bills.spending_title')}</Text>
 
               <View style={styles.spentRow}>
-                <Text style={styles.spentLabel}>income</Text>
+                <Text style={styles.spentLabel}>{t('bills.income')}</Text>
                 <Text style={styles.spentValue}>{fmt$(payAmount)}</Text>
               </View>
               <View style={styles.spentRow}>
-                <Text style={styles.spentLabel}>logged</Text>
+                <Text style={styles.spentLabel}>{t('bills.logged_label')}</Text>
                 <Text style={[styles.spentValue, { color: '#16A34A' }]}>{fmt$(periodExpenses.total)}</Text>
               </View>
               <View style={styles.spentRow}>
-                <Text style={styles.spentLabel}>remaining</Text>
+                <Text style={styles.spentLabel}>{t('bills.remaining')}</Text>
                 <Text style={[styles.spentValue, { color: remaining < 0 ? '#EF4444' : COLORS.textPrimary }]}>{fmt$(remaining)}</Text>
               </View>
 
@@ -338,10 +340,10 @@ export default function BillsScreen() {
                   </View>
                   <Text style={styles.progressText}>
                     {spentPct < 1 && periodExpenses.total === 0
-                      ? 'nothing logged yet ✨'
+                      ? t('bills.nothing_logged')
                       : spentPct >= 100
-                      ? 'over budget bestie 😬'
-                      : `${spentPct.toFixed(1)}% of budget spent`}
+                      ? t('bills.over_budget')
+                      : t('bills.pct_budget', { pct: spentPct.toFixed(1) })}
                   </Text>
                 </View>
               )}
@@ -350,12 +352,12 @@ export default function BillsScreen() {
         </GradientCard>
 
         {/* ── Income & Savings (collapsible) ─────────── */}
-        <CollapsibleSection title="💰 Income & savings">
+        <CollapsibleSection title={t('bills.income_section')}>
           <Text style={styles.sectionHint}>
-            set your pay info so the justify tab knows your vibe ✨
+            {t('bills.income_hint')}
           </Text>
 
-          <Text style={styles.miniLabel}>pay frequency</Text>
+          <Text style={styles.miniLabel}>{t('bills.freq_label')}</Text>
           <View style={styles.freqRow}>
             {FREQ_OPTIONS.map((o) => (
               <TouchableOpacity
@@ -365,7 +367,7 @@ export default function BillsScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.freqChipText, payFrequency === o.key && styles.freqChipTextActive]}>
-                  {o.label}
+                  {t(`bills.freq_${o.key}` as any)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -373,7 +375,7 @@ export default function BillsScreen() {
 
           <InputRow
             icon="💵"
-            placeholder="pay amount per period"
+            placeholder={t('bills.pay_placeholder')}
             value={payAmount ? String(payAmount) : ''}
             onChangeText={(t) => setPayAmount(parseFloat(t) || 0)}
             keyboardType="decimal-pad"
@@ -386,7 +388,7 @@ export default function BillsScreen() {
               source={require('../../assets/smallcatwithpiggybank.png')}
               style={styles.savingsCatIcon}
             />
-            <Text style={styles.savingsLabel}>savings goal: {savingsGoalPct}%</Text>
+            <Text style={styles.savingsLabel}>{t('bills.savings_goal', { pct: savingsGoalPct })}</Text>
           </View>
             <View style={styles.savingsRow}>
               <TouchableOpacity
@@ -409,15 +411,15 @@ export default function BillsScreen() {
 
           {payAmount > 0 && bills.length > 0 && (
             <View style={styles.computedBox}>
-              <Text style={styles.computedTitle}>✨ auto-synced to justify tab ✨</Text>
+              <Text style={styles.computedTitle}>{t('bills.synced')}</Text>
               <Text style={styles.computedRow}>
-                rent: {fmt$(bills.filter(b => b.category === 'rent').reduce((s, b) => s + b.amount, 0))}
+                {t('bills.computed_rent', { amount: fmt$(bills.filter(b => b.category === 'rent').reduce((s, b) => s + b.amount, 0)) })}
               </Text>
               <Text style={styles.computedRow}>
-                car: {fmt$(bills.filter(b => b.category === 'car').reduce((s, b) => s + b.amount, 0))}
+                {t('bills.computed_car', { amount: fmt$(bills.filter(b => b.category === 'car').reduce((s, b) => s + b.amount, 0)) })}
               </Text>
               <Text style={styles.computedRow}>
-                other bills: {fmt$(bills.filter(b => b.category !== 'rent' && b.category !== 'car').reduce((s, b) => s + b.amount, 0))}
+                {t('bills.computed_other', { amount: fmt$(bills.filter(b => b.category !== 'rent' && b.category !== 'car').reduce((s, b) => s + b.amount, 0)) })}
               </Text>
             </View>
           )}
@@ -425,7 +427,7 @@ export default function BillsScreen() {
 
         {/* Bills List */}
         {sorted.map((bill) => {
-          const due = getDueLabel(bill.dueDay);
+          const due = getDueLabel(bill.dueDay, t);
           return (
             <TouchableOpacity
               key={bill.id}
@@ -449,7 +451,7 @@ export default function BillsScreen() {
                         bill.isPaid && styles.billDuePaid,
                       ]}
                     >
-                      {bill.isPaid ? '✅ paid!' : `📅 ${due.text}`}
+                      {bill.isPaid ? t('bills.bill_paid') : `📅 ${due.text}`}
                     </Text>
                   </View>
                   <Text
@@ -465,22 +467,20 @@ export default function BillsScreen() {
 
         {bills.length === 0 && !showAdd && (
           <GradientCard>
-            <Text style={styles.emptyText}>
-              no bills yet ✨{'\n'}tap + to add your first one
-            </Text>
+            <Text style={styles.emptyText}>{t('bills.no_bills_text')}</Text>
           </GradientCard>
         )}
 
         {/* Add Bill Form */}
         {showAdd && (
           <GradientCard>
-            <Text style={styles.addTitle}>✨ add a bill</Text>
+            <Text style={styles.addTitle}>{t('bills.add_form_title')}</Text>
 
             <View style={styles.inputRow}>
               <Text style={styles.inputIcon}>📝</Text>
               <TextInput
                 style={styles.input}
-                placeholder="bill name"
+                placeholder={t('bills.bill_name')}
                 placeholderTextColor={COLORS.textMuted}
                 value={name}
                 onChangeText={setName}
@@ -491,7 +491,7 @@ export default function BillsScreen() {
               <Text style={styles.inputIcon}>💰</Text>
               <TextInput
                 style={styles.input}
-                placeholder="amount"
+                placeholder={t('bills.bill_amount')}
                 placeholderTextColor={COLORS.textMuted}
                 value={amount}
                 onChangeText={setAmount}
@@ -503,7 +503,7 @@ export default function BillsScreen() {
               <Text style={styles.inputIcon}>📅</Text>
               <TextInput
                 style={styles.input}
-                placeholder="due day (1–31)"
+                placeholder={t('bills.bill_due_day')}
                 placeholderTextColor={COLORS.textMuted}
                 value={dueDay}
                 onChangeText={setDueDay}
@@ -512,7 +512,7 @@ export default function BillsScreen() {
             </View>
 
             {/* Category picker */}
-            <Text style={styles.catLabel}>category:</Text>
+            <Text style={styles.catLabel}>{t('bills.category_label')}</Text>
             <View style={styles.catGrid}>
               {CATEGORY_OPTIONS.map((cat) => (
                 <TouchableOpacity
@@ -522,7 +522,7 @@ export default function BillsScreen() {
                   activeOpacity={0.7}
                 >
                   <Text style={styles.catChipText}>
-                    {cat.emoji} {cat.label}
+                    {cat.emoji} {t(`bills.category_${cat.key}` as any)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -533,14 +533,14 @@ export default function BillsScreen() {
                 style={styles.cancelBtn}
                 onPress={() => setShowAdd(false)}
               >
-                <Text style={styles.cancelText}>cancel</Text>
+                <Text style={styles.cancelText}>{t('bills.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleAdd}>
                 <LinearGradient
                   colors={GRADIENTS.button as [string, string, ...string[]]}
                   style={styles.saveBtn}
                 >
-                  <Text style={styles.saveBtnText}>save ✨</Text>
+                  <Text style={styles.saveBtnText}>{t('bills.save_btn')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -555,7 +555,7 @@ export default function BillsScreen() {
               style={styles.actionBtn}
             >
               <Text style={styles.actionBtnText}>
-                {showAdd ? '✕ close' : '+ add bill'}
+                {showAdd ? t('bills.close_btn') : t('bills.add_btn')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -563,15 +563,13 @@ export default function BillsScreen() {
           {bills.length > 0 && (
             <TouchableOpacity onPress={resetMonth}>
               <View style={styles.resetBtn}>
-                <Text style={styles.resetBtnText}>🔄 new month</Text>
+                <Text style={styles.resetBtnText}>{t('bills.new_month_btn')}</Text>
               </View>
             </TouchableOpacity>
           )}
         </View>
 
-        <Text style={styles.hint}>
-          tap to mark paid · long press to delete 💅
-        </Text>
+        <Text style={styles.hint}>{t('bills.footer_hint')}</Text>
 
         <View style={{ height: 100 }} />
       </ScrollView>

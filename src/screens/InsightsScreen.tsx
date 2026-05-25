@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
@@ -35,6 +36,7 @@ interface CatBucket { category: SpendCategory; total: number; }
 
 export default function InsightsScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [daily, setDaily] = useState<DayBucket[]>([]);
   const [byCategory, setByCategory] = useState<CatBucket[]>([]);
   const [periodTotal, setPeriodTotal] = useState(0);
@@ -106,33 +108,33 @@ export default function InsightsScreen() {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-            <Text style={styles.backText}>‹ back</Text>
+            <Text style={styles.backText}>{t('insights.back')}</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>📊 spending insights</Text>
-          <Text style={styles.subtitle}>the unfiltered truth about your money ✨</Text>
+          <Text style={styles.title}>{t('insights.title')}</Text>
+          <Text style={styles.subtitle}>{t('insights.subtitle')}</Text>
 
           {/* Stats row */}
           <GradientCard>
-            <Text style={styles.cardTitle}>this period</Text>
+            <Text style={styles.cardTitle}>{t('insights.this_period')}</Text>
             <View style={styles.statsRow}>
               <View style={styles.statCell}>
                 <Text style={styles.statNum}>{fmt$(periodTotal)}</Text>
-                <Text style={styles.statLabel}>total spent</Text>
+                <Text style={styles.statLabel}>{t('insights.total_spent')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statCell}>
                 <Text style={styles.statNum}>{fmt$(avgPerDay)}</Text>
-                <Text style={styles.statLabel}>avg / day</Text>
+                <Text style={styles.statLabel}>{t('insights.avg_day')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statCell}>
                 <Text style={styles.statNum}>{totalEntries}</Text>
-                <Text style={styles.statLabel}>purchases</Text>
+                <Text style={styles.statLabel}>{t('insights.purchases')}</Text>
               </View>
             </View>
             {biggestEntry && (
               <View style={styles.biggestRow}>
-                <Text style={styles.biggestLabel}>💸 biggest purchase</Text>
+                <Text style={styles.biggestLabel}>{t('insights.biggest')}</Text>
                 <Text style={styles.biggestItem} numberOfLines={1}>{biggestEntry.itemName}</Text>
                 <Text style={styles.biggestAmt}>{fmt$(biggestEntry.price)}</Text>
               </View>
@@ -141,7 +143,7 @@ export default function InsightsScreen() {
 
           {/* 30-day daily chart */}
           <GradientCard>
-            <Text style={styles.cardTitle}>last 30 days</Text>
+            <Text style={styles.cardTitle}>{t('insights.last_30')}</Text>
             <View style={styles.dailyChart}>
               {daily.map((d, i) => (
                 <View key={i} style={styles.dayCol}>
@@ -158,19 +160,19 @@ export default function InsightsScreen() {
               ))}
             </View>
             <View style={styles.chartFooter}>
-              <Text style={styles.chartFooterLabel}>30d ago</Text>
-              <Text style={styles.chartFooterLabel}>today</Text>
+              <Text style={styles.chartFooterLabel}>{t('insights.chart_ago')}</Text>
+              <Text style={styles.chartFooterLabel}>{t('insights.chart_today')}</Text>
             </View>
             {daily.every(d => d.total === 0) && (
-              <Text style={styles.emptyHint}>no logged expenses yet 👻 start logging to see your chart</Text>
+              <Text style={styles.emptyHint}>{t('insights.empty_chart')}</Text>
             )}
           </GradientCard>
 
           {/* Category breakdown */}
           <GradientCard>
-            <Text style={styles.cardTitle}>by category (all time)</Text>
+            <Text style={styles.cardTitle}>{t('insights.by_category')}</Text>
             {byCategory.length === 0 ? (
-              <Text style={styles.emptyHint}>no categorized expenses yet 🌸 log some to see breakdown</Text>
+              <Text style={styles.emptyHint}>{t('insights.empty_category')}</Text>
             ) : (
               byCategory.map(({ category, total }) => {
                 const cat = SPEND_CATEGORIES.find(c => c.key === category);
@@ -181,7 +183,7 @@ export default function InsightsScreen() {
                     <Text style={styles.catEmoji}>{cat?.emoji ?? '🛍️'}</Text>
                     <View style={styles.catInfo}>
                       <View style={styles.catTopRow}>
-                        <Text style={styles.catName}>{cat?.label ?? category}</Text>
+                        <Text style={styles.catName}>{cat ? t(`categories.${category}` as any) : category}</Text>
                         <Text style={[styles.catAmt, { color }]}>{fmt$(total)}</Text>
                       </View>
                       <View style={styles.catBarTrack}>

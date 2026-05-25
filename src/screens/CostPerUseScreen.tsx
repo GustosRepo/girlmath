@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -30,6 +31,7 @@ function cpuColor(item: CostPerUseItem): string {
 
 export default function CostPerUseScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [items, setItems] = useState<CostPerUseItem[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -71,10 +73,10 @@ export default function CostPerUseScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('remove item?', 'this will delete the tracking history', [
-      { text: 'keep it', style: 'cancel' },
+    Alert.alert(t('cpu.delete_title'), t('cpu.delete_body'), [
+      { text: t('cpu.delete_keep'), style: 'cancel' },
       {
-        text: 'remove', style: 'destructive', onPress: async () => {
+        text: t('cpu.delete_remove'), style: 'destructive', onPress: async () => {
           const updated = items.filter(i => i.id !== id);
           setItems(updated);
           await saveCostPerUseItems(updated);
@@ -89,22 +91,22 @@ export default function CostPerUseScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-              <Text style={styles.backText}>‹ tools</Text>
+              <Text style={styles.backText}>{t('cpu.back')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>📊 cost per use</Text>
-            <Text style={styles.subtitle}>justify the expensive stuff with math 💅</Text>
+            <Text style={styles.title}>{t('cpu.title')}</Text>
+            <Text style={styles.subtitle}>{t('cpu.subtitle')}</Text>
 
             <TouchableOpacity
               style={styles.addBtn}
               onPress={() => setShowAdd(v => !v)}
               activeOpacity={0.8}
             >
-              <Text style={styles.addBtnText}>{showAdd ? '✕ cancel' : '+ add item'}</Text>
+              <Text style={styles.addBtnText}>{showAdd ? t('cpu.cancel_btn') : t('cpu.add_btn')}</Text>
             </TouchableOpacity>
 
             {showAdd && (
               <GradientCard>
-                <Text style={styles.sectionTitle}>new item</Text>
+                <Text style={styles.sectionTitle}>{t('cpu.new_item_title')}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiPicker}>
                   {EMOJI_OPTIONS.map(e => (
                     <TouchableOpacity
@@ -120,7 +122,7 @@ export default function CostPerUseScreen() {
                   style={styles.input}
                   value={newName}
                   onChangeText={setNewName}
-                  placeholder="item name (e.g. Lululemon leggings)"
+                  placeholder={t('cpu.name_placeholder')}
                   placeholderTextColor={COLORS.textMuted}
                 />
                 <View style={styles.priceRow}>
@@ -130,21 +132,19 @@ export default function CostPerUseScreen() {
                     value={newPrice}
                     onChangeText={setNewPrice}
                     keyboardType="decimal-pad"
-                    placeholder="price paid"
+                    placeholder={t('cpu.price_placeholder')}
                     placeholderTextColor={COLORS.textMuted}
                   />
                 </View>
                 <TouchableOpacity style={styles.saveBtn} onPress={handleAdd} activeOpacity={0.8}>
-                  <Text style={styles.saveBtnText}>add to tracker ✨</Text>
+                  <Text style={styles.saveBtnText}>{t('cpu.save_btn')}</Text>
                 </TouchableOpacity>
               </GradientCard>
             )}
 
             {items.length === 0 && !showAdd && (
               <GradientCard>
-                <Text style={styles.emptyText}>
-                  no items yet 💭{'\n'}track your purchases and log each time you use them — watch the cost-per-use drop 👑
-                </Text>
+                <Text style={styles.emptyText}>{t('cpu.empty')}</Text>
               </GradientCard>
             )}
 
@@ -157,7 +157,7 @@ export default function CostPerUseScreen() {
                     <Text style={styles.itemEmoji}>{item.emoji}</Text>
                     <View style={styles.itemInfo}>
                       <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemPaid}>paid {fmt$(item.price)}</Text>
+                      <Text style={styles.itemPaid}>{t('cpu.paid', { amount: fmt$(item.price) })}</Text>
                     </View>
                     <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn}>
                       <Text style={styles.deleteBtnText}>✕</Text>
@@ -168,18 +168,18 @@ export default function CostPerUseScreen() {
                     <View style={[styles.cpuBadge, { backgroundColor: color + '20', borderColor: color }]}>
                       <Text style={[styles.cpuValue, { color }]}>{cpuLabel(item)}</Text>
                     </View>
-                    <Text style={styles.usesText}>{item.uses} use{item.uses !== 1 ? 's' : ''}</Text>
+                    <Text style={styles.usesText}>{item.uses !== 1 ? t('cpu.uses_plural', { n: item.uses }) : t('cpu.uses', { n: item.uses })}</Text>
                   </View>
 
                   {item.uses > 0 && cpu <= 1 && (
-                    <Text style={styles.crowdText}>✨ basically free at this point</Text>
+                    <Text style={styles.crowdText}>{t('cpu.basically_free')}</Text>
                   )}
                   {item.uses === 0 && (
-                    <Text style={styles.crowdText}>log your first use to see the magic happen 👇</Text>
+                    <Text style={styles.crowdText}>{t('cpu.first_use')}</Text>
                   )}
 
                   <TouchableOpacity style={styles.useBtn} onPress={() => handleUse(item.id)} activeOpacity={0.75}>
-                    <Text style={styles.useBtnText}>👆 i used this today</Text>
+                    <Text style={styles.useBtnText}>{t('cpu.use_btn')}</Text>
                   </TouchableOpacity>
                 </GradientCard>
               );

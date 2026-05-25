@@ -13,9 +13,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import { COLORS, GRADIENTS, PERSONALITY_OPTIONS } from '../utils/theme';
 import { PersonalityMode } from '../types';
-import { saveMode } from '../utils/storage';
+import { saveMode, saveLanguage, type SupportedLanguage } from '../utils/storage';
 import { PAYWALL_DISMISSED_KEY } from './PaywallScreen';
 
 const { width, height } = Dimensions.get('window');
@@ -39,8 +41,10 @@ interface Props {
 }
 
 export default function OnboardingScreen({ onComplete }: Props) {
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
   const [selectedMode, setSelectedMode] = useState<PersonalityMode>('delulu');
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>((i18n.language as SupportedLanguage) || 'en');
 
   // Slide + fade for step transitions
   const slideAnim = useRef(new Animated.Value(0)).current;
@@ -175,36 +179,75 @@ export default function OnboardingScreen({ onComplete }: Props) {
       <CatMascot source={require('../../assets/largehappycat.png')} />
 
       <View style={styles.textBlock}>
-        <Text style={styles.tagline}>hey bestie 💖</Text>
-        <Text style={styles.headline}>Meet GirlMath</Text>
-        <Text style={styles.body}>
-          Your emotionally intelligent spending bestie — here to justify every purchase,
-          track your bills, and make finance feel cute.
-        </Text>
+        <Text style={styles.tagline}>{t('onboarding.welcome_tagline')}</Text>
+        <Text style={styles.headline}>{t('onboarding.welcome_headline')}</Text>
+        <Text style={styles.body}>{t('onboarding.welcome_body')}</Text>
       </View>
 
       <View style={styles.pillRow}>
-        {['justify anything 💅', 'price check 🔍', 'track bills 📅'].map((p) => (
+        {([t('onboarding.pill_justify'), t('onboarding.pill_price'), t('onboarding.pill_bills')] as string[]).map((p) => (
           <View key={p} style={styles.pill}>
             <Text style={styles.pillText}>{p}</Text>
           </View>
         ))}
       </View>
 
-      <PrimaryBtn label="let's go bestie 💖" onPress={() => transitionTo(1)} />
+      <PrimaryBtn label={t('onboarding.cta_welcome')} onPress={() => transitionTo(1)} />
     </View>
   );
 
   // ─────────────────────────────────────────────────────
-  // STEP 1 — Pick your vibe
+  // STEP 1 — Language selection
+  // ─────────────────────────────────────────────────────
+  const StepLanguage = () => (
+    <View style={styles.stepContent}>
+      <CatMascot source={require('../../assets/largehappycat.png')} />
+
+      <View style={styles.textBlock}>
+        <Text style={styles.tagline}>{t('onboarding.language_step')}</Text>
+        <Text style={styles.headline}>{t('onboarding.language_headline')}</Text>
+        <Text style={styles.body}>{t('onboarding.language_body')}</Text>
+      </View>
+
+      <View style={styles.languageGrid}>
+        {[
+          { key: 'en' as SupportedLanguage, label: 'English' },
+          { key: 'es' as SupportedLanguage, label: 'Español' },
+          { key: 'th' as SupportedLanguage, label: 'ไทย' },
+        ].map((lang) => {
+          const isActive = selectedLanguage === lang.key;
+          return (
+            <TouchableOpacity
+              key={lang.key}
+              style={[styles.langCard, isActive && styles.langCardActive]}
+              onPress={async () => {
+                await Haptics.selectionAsync();
+                setSelectedLanguage(lang.key);
+                await saveLanguage(lang.key);
+                await i18n.changeLanguage(lang.key);
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.langCardLabel, isActive && styles.langCardLabelActive]}>
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <PrimaryBtn label={t('onboarding.cta_continue')} onPress={() => transitionTo(2)} />
+    </View>
+  );
+
+  // ─────────────────────────────────────────────────────
+  // STEP 2 — Pick your vibe
   // ─────────────────────────────────────────────────────
   const StepVibe = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.tagline}>step 2 of 3</Text>
-      <Text style={styles.headline}>pick your vibe ✨</Text>
-      <Text style={styles.body}>
-        Your bestie's personality. You can always change this in Settings.
-      </Text>
+      <Text style={styles.tagline}>{t('onboarding.vibe_step')}</Text>
+      <Text style={styles.headline}>{t('onboarding.vibe_headline')}</Text>
+      <Text style={styles.body}>{t('onboarding.vibe_body')}</Text>
 
       <View style={styles.modeList}>
         {PERSONALITY_OPTIONS.map((opt) => {
@@ -241,31 +284,28 @@ export default function OnboardingScreen({ onComplete }: Props) {
         })}
       </View>
 
-      <PrimaryBtn label="that's so me 💅" onPress={() => transitionTo(2)} />
+      <PrimaryBtn label={t('onboarding.cta_vibe')} onPress={() => transitionTo(3)} />
     </View>
   );
 
   // ─────────────────────────────────────────────────────
-  // STEP 2 — Bills optional
+  // STEP 3 — Bills optional
   // ─────────────────────────────────────────────────────
   const StepBills = () => (
     <View style={styles.stepContent}>
       <CatMascot source={require('../../assets/largecatbillsdue.png')} size={170} />
 
       <View style={styles.textBlock}>
-        <Text style={styles.tagline}>last step, bestie 💌</Text>
-        <Text style={styles.headline}>want to track your bills?</Text>
-        <Text style={styles.body}>
-          Add your recurring expenses and we'll remind you before they're due — no more
-          surprise charges, just soft reminders from your bestie.
-        </Text>
+        <Text style={styles.tagline}>{t('onboarding.bills_tagline')}</Text>
+        <Text style={styles.headline}>{t('onboarding.bills_headline')}</Text>
+        <Text style={styles.body}>{t('onboarding.bills_body')}</Text>
       </View>
 
       <View style={styles.billsFeatureRow}>
         {[
-          { emoji: '🔔', text: 'due date reminders' },
-          { emoji: '📊', text: 'spending breakdown' },
-          { emoji: '💰', text: 'savings tracking' },
+          { emoji: '🔔', text: t('onboarding.feature_reminders') },
+          { emoji: '📊', text: t('onboarding.feature_breakdown') },
+          { emoji: '💰', text: t('onboarding.feature_savings') },
         ].map((f) => (
           <View key={f.text} style={styles.billsFeatureChip}>
             <Text style={styles.billsFeatureEmoji}>{f.emoji}</Text>
@@ -274,19 +314,19 @@ export default function OnboardingScreen({ onComplete }: Props) {
         ))}
       </View>
 
-      <PrimaryBtn label="set up my bills 📅" onPress={() => handleFinish(true)} />
+      <PrimaryBtn label={t('onboarding.cta_bills')} onPress={() => handleFinish(true)} />
 
       <TouchableOpacity
         activeOpacity={0.6}
         onPress={() => handleFinish(false)}
         style={styles.skipBtn}
       >
-        <Text style={styles.skipText}>skip for now — I'll add later</Text>
+        <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
       </TouchableOpacity>
     </View>
   );
 
-  const STEPS = [<StepWelcome key="0" />, <StepVibe key="1" />, <StepBills key="2" />];
+  const STEPS = [<StepWelcome key="0" />, <StepLanguage key="1" />, <StepVibe key="2" />, <StepBills key="3" />];
 
   return (
     <LinearGradient
@@ -456,7 +496,47 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
 
-  // ── Mode cards (step 1) ───────────────────────────────
+  // ── Language cards (step 1) ───────────────────────────────
+  languageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'center',
+    width: '100%',
+    marginVertical: 10,
+  },
+  langCard: {
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 18,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,182,217,0.3)',
+    minWidth: 100,
+    shadowColor: '#C084FC',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  langCardActive: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderColor: COLORS.pinkHot,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  langCardLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  langCardLabelActive: {
+    color: COLORS.pinkHot,
+  },
+
+  // ── Mode cards (step 2) ───────────────────────────────
   modeList: { width: '100%', gap: 10 },
   modeCard: {
     borderRadius: 20,

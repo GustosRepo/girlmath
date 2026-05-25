@@ -12,6 +12,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation, TFunction } from 'react-i18next';
 import { COLORS, GRADIENTS } from '../utils/theme';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -29,25 +30,26 @@ const VERDICT_BADGE: Record<PriceVerdict, { emoji: string; color: string }> = {
   overpriced: { emoji: '😬', color: '#EF4444' },
 };
 
-function timeAgo(isoString: string): string {
+function timeAgo(isoString: string, t: TFunction): string {
   const ts = new Date(isoString).getTime();
   if (!isoString || isNaN(ts)) return '';
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return t('history.just_now');
+  if (mins < 60) return t('history.mins_ago', { n: mins });
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return t('history.hrs_ago', { n: hrs });
   const days = Math.floor(hrs / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return new Date(isoString).toLocaleDateString('en-US', {
+  if (days === 1) return t('history.yesterday');
+  if (days < 7) return t('history.days_ago', { n: days });
+  return new Date(isoString).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
   });
 }
 
 export default function HistoryScreen() {
+  const { t } = useTranslation();
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isPremium, setIsPremium] = useState(false);
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses | null>(null);
@@ -212,10 +214,10 @@ export default function HistoryScreen() {
   const hasLockedEntries = !isPremium && history.length > FREE_HISTORY_CAP;
 
   const handleClear = () => {
-    Alert.alert('clear history?', 'this can\'t be undone bestie 👀', [
-      { text: 'nah keep it', style: 'cancel' },
+    Alert.alert(t('history.clear_title'), t('history.clear_body'), [
+      { text: t('history.clear_no'), style: 'cancel' },
       {
-        text: 'clear it all',
+        text: t('history.clear_yes'),
         style: 'destructive',
         onPress: async () => {
           await clearHistory();
@@ -232,8 +234,8 @@ export default function HistoryScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>📜 spending diary</Text>
-        <Text style={styles.subtitle}>every purchase has a story ✨</Text>
+        <Text style={styles.title}>{t('history.page_title')}</Text>
+        <Text style={styles.subtitle}>{t('history.page_subtitle')}</Text>
 
         {/* Streak badge */}
         {spendingStreak >= 2 && (
@@ -241,8 +243,8 @@ export default function HistoryScreen() {
             <View style={styles.streakRow}>
               <Text style={styles.streakFire}>🔥</Text>
               <View>
-                <Text style={styles.streakTitle}>{spendingStreak}-day spending streak</Text>
-                <Text style={styles.streakSub}>iconic, truly iconic</Text>
+                <Text style={styles.streakTitle}>{t('history.streak_title', { n: spendingStreak })}</Text>
+                <Text style={styles.streakSub}>{t('history.streak_sub')}</Text>
               </View>
             </View>
           </GradientCard>
@@ -251,8 +253,8 @@ export default function HistoryScreen() {
         {/* Pay period summary (premium) */}
         {isPremium && periodExpenses && periodExpenses.total > 0 && (
           <GradientCard>
-            <Text style={styles.sectionTitle}>📅 this pay period</Text>
-            <Text style={styles.periodTotal}>{fmt$(periodExpenses.total)} spent</Text>
+            <Text style={styles.sectionTitle}>{t('history.this_period')}</Text>
+            <Text style={styles.periodTotal}>{t('history.period_spent', { amount: fmt$(periodExpenses.total) })}</Text>
             {periodExpenses.byCategory && Object.keys(periodExpenses.byCategory).length > 0 && (
               <View style={styles.catBreakdown}>
                 {(Object.entries(periodExpenses.byCategory) as [SpendCategory, number][])
@@ -263,7 +265,7 @@ export default function HistoryScreen() {
                     return (
                       <View key={cat} style={styles.catRow}>
                         <Text style={styles.catEmoji}>{catInfo?.emoji ?? '🛍️'}</Text>
-                        <Text style={styles.catLabel}>{catInfo?.label ?? cat}</Text>
+                        <Text style={styles.catLabel}>{catInfo ? t(`categories.${cat}` as any) : cat}</Text>
                         <Text style={styles.catAmount}>{fmt$(amount)}</Text>
                       </View>
                     );
@@ -279,19 +281,19 @@ export default function HistoryScreen() {
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{history.length}</Text>
-                <Text style={styles.statLabel}>justifications</Text>
+                <Text style={styles.statLabel}>{t('history.stat_justifications')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{fmt$(totalSpent)}</Text>
-                <Text style={styles.statLabel}>total "researched"</Text>
+                <Text style={styles.statLabel}>{t('history.stat_researched')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{steals}</Text>
-                <Text style={styles.statLabel}>steals found</Text>
+                <Text style={styles.statLabel}>{t('history.stat_steals')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: '#16A34A' }]}>{loggedCount}</Text>
-                <Text style={styles.statLabel}>logged</Text>
+                <Text style={styles.statLabel}>{t('history.logged')}</Text>
               </View>
             </View>
           </GradientCard>
@@ -305,7 +307,7 @@ export default function HistoryScreen() {
           >
             <GradientCard>
               <Text style={styles.insightsTitle}>
-                {isPremium ? '✨ your spending vibe' : '🔒 your spending vibe'}
+                {isPremium ? t('history.spending_vibe_on') : t('history.spending_vibe_off')}
               </Text>
               {isPremium && insightsData ? (
                 <>
@@ -320,7 +322,7 @@ export default function HistoryScreen() {
                 </>
               ) : (
                 <Text style={styles.insightLocked}>
-                  upgrade to unlock your spending persona & insights ✨
+                  {t('history.insights_upgrade')}
                 </Text>
               )}
             </GradientCard>
@@ -337,7 +339,7 @@ export default function HistoryScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Text style={styles.exportButtonText}>
-                {isPremium ? '📊 export report' : '🔒 export report'}
+                {isPremium ? t('history.export_btn') : t('history.export_locked')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -350,7 +352,7 @@ export default function HistoryScreen() {
               <Text style={styles.entryEmoji}>{entry.emoji}</Text>
               <View style={styles.entryInfo}>
                 <Text style={styles.entryName}>{entry.itemName}</Text>
-                <Text style={styles.entryTime}>{timeAgo(entry.timestamp)}</Text>
+                <Text style={styles.entryTime}>{timeAgo(entry.timestamp, t)}</Text>
               </View>
               <View style={styles.entryRight}>
                 <Text style={styles.entryPrice}>{fmt$(entry.price)}</Text>
@@ -362,8 +364,7 @@ export default function HistoryScreen() {
                     ]}
                   >
                     <Text style={styles.verdictText}>
-                      {VERDICT_BADGE[entry.verdict].emoji}{' '}
-                      {entry.verdict}
+                      {t(`history.verdict_${entry.verdict}` as any)}
                     </Text>
                   </View>
                 )}
@@ -375,7 +376,7 @@ export default function HistoryScreen() {
                     ]}
                   >
                     <Text style={[styles.verdictText, { color: '#16A34A' }]}>
-                      📝 logged
+                      {t('history.verdict_logged')}
                     </Text>
                   </View>
                 )}
@@ -388,7 +389,7 @@ export default function HistoryScreen() {
             </View>
             <Text style={styles.modeTag}>
               {entry.personality === 'delulu' ? '🦄' : entry.personality === 'chaotic' ? '🔥' : '📋'}{' '}
-              {entry.personality} mode
+              {t('history.mode_tag', { mode: entry.personality })}
             </Text>
           </GradientCard>
         ))}
@@ -403,9 +404,9 @@ export default function HistoryScreen() {
               <View style={styles.lockedBanner}>
                 <Text style={styles.lockedBannerEmoji}>🔒</Text>
                 <Text style={styles.lockedBannerText}>
-                  {history.length - FREE_HISTORY_CAP} more entries hidden
+                  {t('history.entries_hidden', { n: history.length - FREE_HISTORY_CAP })}
                 </Text>
-                <Text style={styles.lockedBannerSub}>upgrade to see your full history 💎</Text>
+                <Text style={styles.lockedBannerSub}>{t('history.unlock_full')}</Text>
               </View>
             </GradientCard>
           </TouchableOpacity>
@@ -419,7 +420,7 @@ export default function HistoryScreen() {
                 style={styles.emptyCat}
               />
               <Text style={styles.emptyText}>
-                no justifications yet ✨{`\n`}go justify some purchases bestie!
+                {t('history.empty_text')}
               </Text>
             </View>
           </GradientCard>
@@ -427,7 +428,7 @@ export default function HistoryScreen() {
 
         {history.length > 0 && (
           <TouchableOpacity onPress={handleClear} style={styles.clearBtn}>
-            <Text style={styles.clearText}>🗑️ clear history</Text>
+            <Text style={styles.clearText}>{t('history.clear_btn')}</Text>
           </TouchableOpacity>
         )}
 

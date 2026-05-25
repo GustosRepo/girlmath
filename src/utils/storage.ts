@@ -6,6 +6,7 @@ const BILLS_KEY = '@girlmath_bills';
 const HISTORY_KEY = '@girlmath_history';
 const EXPENSES_KEY = '@girlmath_expenses';
 const STORAGE_VERSION_KEY = '@girlmath_storage_version';
+const LANGUAGE_KEY = '@girlmath_language';
 const CURRENT_STORAGE_VERSION = 1;
 
 type JsonRecord = Record<string, unknown>;
@@ -16,6 +17,8 @@ const SPEND_CATEGORIES: SpendCategory[] = ['shopping', 'food', 'beauty', 'shoes'
 const BILL_CATEGORIES: BillReminder['category'][] = ['rent', 'utilities', 'subscriptions', 'insurance', 'phone', 'car', 'loans', 'other'];
 const AURA_THEMES: AuraTheme[] = ['default', 'clean-girl', 'y2k', 'dark-academia'];
 const SUBSCRIPTION_CATEGORIES: Subscription['category'][] = ['streaming', 'fitness', 'beauty', 'food', 'software', 'other'];
+const SUPPORTED_LANGUAGES = ['en', 'es', 'th'] as const;
+export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 function isRecord(value: unknown): value is JsonRecord {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -695,4 +698,22 @@ export async function contributeToGoal(goalId: string, amount: number): Promise<
   } catch {
     return [];
   }
+}
+
+// ── Language preference ────────────────────────────────────────────
+export async function loadLanguage(): Promise<SupportedLanguage | null> {
+  try {
+    const raw = await AsyncStorage.getItem(LANGUAGE_KEY);
+    if (!raw) return null;
+    const lang = asString(raw, 5);
+    return lang && SUPPORTED_LANGUAGES.includes(lang as SupportedLanguage) ? (lang as SupportedLanguage) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveLanguage(lang: SupportedLanguage): Promise<void> {
+  try {
+    await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+  } catch {}
 }

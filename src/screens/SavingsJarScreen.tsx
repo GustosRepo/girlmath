@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -13,17 +14,20 @@ import { loadSavingsJar, addToSavingsJar, saveSavingsJar } from '../utils/storag
 import { fmt$ } from '../utils/finance';
 import { SavingsJarEntry } from '../types';
 
-function timeAgo(iso: string): string {
+import type { TFunction } from 'i18next';
+
+function timeAgo(iso: string, t: TFunction): string {
   const diff = Date.now() - new Date(iso).getTime();
   const days = Math.floor(diff / 86400000);
-  if (days === 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (days === 0) return t('jar.today');
+  if (days === 1) return t('jar.yesterday');
+  if (days < 7) return t('jar.days_ago', { n: days });
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function SavingsJarScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [entries, setEntries] = useState<SavingsJarEntry[]>([]);
   const [itemInput, setItemInput] = useState('');
   const [priceInput, setPriceInput] = useState('');
@@ -64,10 +68,10 @@ export default function SavingsJarScreen() {
   };
 
   const handleDelete = (id: string) => {
-    Alert.alert('remove this?', "it'll come off your jar total", [
-      { text: 'keep it', style: 'cancel' },
+    Alert.alert(t('jar.delete_title'), t('jar.delete_body'), [
+      { text: t('jar.delete_keep'), style: 'cancel' },
       {
-        text: 'remove', style: 'destructive', onPress: async () => {
+        text: t('jar.delete_remove'), style: 'destructive', onPress: async () => {
           const updated = entries.filter(e => e.id !== id);
           setEntries(updated);
           await saveSavingsJar(updated);
@@ -77,11 +81,11 @@ export default function SavingsJarScreen() {
   };
 
   const jarVibeMessage = () => {
-    if (totalSaved === 0) return 'start skipping things to fill the jar 🫙';
-    if (totalSaved < 50) return `off to a great start! ${fmt$(totalSaved)} saved so far ✨`;
-    if (totalSaved < 200) return `${fmt$(totalSaved)} saved — the self-control is immaculate 👑`;
-    if (totalSaved < 500) return `${fmt$(totalSaved)}?? bestie you're THRIVING 💅`;
-    return `${fmt$(totalSaved)} saved — you're literally a financial icon 🏆`;
+    if (totalSaved === 0) return t('jar.vibe_empty');
+    if (totalSaved < 50) return t('jar.vibe_start', { amount: fmt$(totalSaved) });
+    if (totalSaved < 200) return t('jar.vibe_good', { amount: fmt$(totalSaved) });
+    if (totalSaved < 500) return t('jar.vibe_great', { amount: fmt$(totalSaved) });
+    return t('jar.vibe_icon', { amount: fmt$(totalSaved) });
   };
 
   return (
@@ -90,30 +94,30 @@ export default function SavingsJarScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-              <Text style={styles.backText}>‹ tools</Text>
+              <Text style={styles.backText}>{t('jar.back')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>🫙 savings jar</Text>
-            <Text style={styles.subtitle}>every skip counts bestie ✨</Text>
+            <Text style={styles.title}>{t('jar.title')}</Text>
+            <Text style={styles.subtitle}>{t('jar.subtitle')}</Text>
 
             {/* Jar total */}
             <GradientCard>
               <Text style={styles.jarEmoji}>🫙</Text>
               <Text style={styles.totalSaved}>{fmt$(totalSaved)}</Text>
-              <Text style={styles.totalLabel}>skipped & saved</Text>
+              <Text style={styles.totalLabel}>{t('jar.skipped_saved')}</Text>
               <Text style={styles.vibeMsg}>{jarVibeMessage()}</Text>
               {entries.length > 0 && (
-                <Text style={styles.countNote}>{entries.length} skip{entries.length !== 1 ? 's' : ''} logged</Text>
+                <Text style={styles.countNote}>{entries.length !== 1 ? t('jar.skip_count_plural', { n: entries.length }) : t('jar.skip_count', { n: entries.length })}</Text>
               )}
             </GradientCard>
 
             {/* Log a skip */}
             <GradientCard>
-              <Text style={styles.sectionTitle}>💪 i skipped this</Text>
+              <Text style={styles.sectionTitle}>{t('jar.log_title')}</Text>
               <TextInput
                 style={styles.input}
                 value={itemInput}
                 onChangeText={setItemInput}
-                placeholder="what did you NOT buy? (e.g. Zara jacket)"
+                placeholder={t('jar.item_placeholder')}
                 placeholderTextColor={COLORS.textMuted}
               />
               <View style={styles.priceRow}>
@@ -123,7 +127,7 @@ export default function SavingsJarScreen() {
                   value={priceInput}
                   onChangeText={setPriceInput}
                   keyboardType="decimal-pad"
-                  placeholder="how much was it?"
+                  placeholder={t('jar.price_placeholder')}
                   placeholderTextColor={COLORS.textMuted}
                 />
               </View>
@@ -131,7 +135,7 @@ export default function SavingsJarScreen() {
                 style={styles.noteInput}
                 value={noteInput}
                 onChangeText={setNoteInput}
-                placeholder="why'd you skip it? (optional)"
+                placeholder={t('jar.note_placeholder')}
                 placeholderTextColor={COLORS.textMuted}
               />
               {justSaved ? (
@@ -144,7 +148,7 @@ export default function SavingsJarScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.logBtnText}>🫙 add to jar</Text>
+                    <Text style={styles.logBtnText}>{t('jar.log_btn')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -152,9 +156,7 @@ export default function SavingsJarScreen() {
 
             {entries.length === 0 && (
               <GradientCard>
-                <Text style={styles.emptyText}>
-                  nothing in the jar yet 💭{'\n'}every time you resist a purchase, log it here and watch your willpower savings grow 💪
-                </Text>
+                <Text style={styles.emptyText}>{t('jar.empty')}</Text>
               </GradientCard>
             )}
 
@@ -164,7 +166,7 @@ export default function SavingsJarScreen() {
                   <View style={styles.entryInfo}>
                     <Text style={styles.entryName}>{entry.itemName}</Text>
                     {entry.note && <Text style={styles.entryNote}>"{entry.note}"</Text>}
-                    <Text style={styles.entryTime}>{timeAgo(entry.timestamp)}</Text>
+                    <Text style={styles.entryTime}>{timeAgo(entry.timestamp, t)}</Text>
                   </View>
                   <View style={styles.entryRight}>
                     <Text style={styles.entryAmount}>+{fmt$(entry.price)}</Text>

@@ -10,6 +10,7 @@ import {
   Animated,
   Image,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { BannerAd, BannerAdSize, AdUnitIds, useInterstitialAd } from '../utils/ads';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
@@ -70,6 +71,7 @@ function isVagueName(name: string): boolean {
 }
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { showPaywall } = usePaywall();
 
   // ── core state ────────────────────────────────────────
@@ -306,14 +308,7 @@ export default function HomeScreen() {
   };
 
   // ── log expense handler (FREE — no daily limit) ────────
-  const LOG_MESSAGES = [
-    'yes babe you know what you want 💅',
-    'logged it queen, your budget is updated ✨',
-    'money well spent bestie 💖',
-    'added to the diary, slay responsibly 👑',
-    'noted! your budget knows about this now 🩷',
-    'logged and gorgeous, just like you 💫',
-  ];
+  const getLogMessages = () => t('home.log_confirm', { returnObjects: true }) as string[];
 
   const handleLogExpense = async (fromJustify = false) => {
     const logName = fromJustify ? (pendingLogRef.current?.itemName ?? itemName.trim()) : itemName.trim();
@@ -325,7 +320,7 @@ export default function HomeScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    const msg = LOG_MESSAGES[Math.floor(Math.random() * LOG_MESSAGES.length)];
+    const msg = getLogMessages()[Math.floor(Math.random() * getLogMessages().length)];
     setLogConfirmMsg(msg);
     if (!fromJustify) setShowJarNudge(true);
 
@@ -397,12 +392,12 @@ export default function HomeScreen() {
               style={styles.headerCat}
             />
             <Text style={styles.title}>GirlMath</Text>
-            <Text style={styles.subtitle}>your spending bestie</Text>
+            <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
           </View>
 
           {/* ── Item inputs ────────────────────────────── */}
           <GradientCard>
-            <Text style={styles.cardTitle}>💅 what are we buying?</Text>
+            <Text style={styles.cardTitle}>{t('home.card_title')}</Text>
             <InputRow
               icon="🛍️"
               placeholder={ITEM_PLACEHOLDERS[placeholderIdx]}
@@ -411,16 +406,16 @@ export default function HomeScreen() {
             />
             {itemName.trim().length > 0 && isVagueName(itemName) ? (
               <Text style={styles.vagueHint}>
-                💡 be specific for better results — e.g. "{ITEM_PLACEHOLDERS[placeholderIdx]}"
+                {t('home.vague_hint', { example: ITEM_PLACEHOLDERS[placeholderIdx] })}
               </Text>
             ) : (
               <Text style={styles.inputHelperText}>
-                include brand + model for best results ✨
+                {t('home.include_brand')}
               </Text>
             )}
             <InputRow
               icon="💰"
-              placeholder="price"
+              placeholder={t('home.price_placeholder')}
               value={price}
               onChangeText={(t: string) => { setPrice(t); setLogConfirmMsg(''); }}
               keyboardType="decimal-pad"
@@ -428,7 +423,7 @@ export default function HomeScreen() {
             />
             <InputRow
               icon="📝"
-              placeholder="note (optional)"
+              placeholder={t('home.note_placeholder_short')}
               value={note}
               onChangeText={setNote}
             />
@@ -449,7 +444,7 @@ export default function HomeScreen() {
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.buttonText}>
-                    {isLoading ? '✨ ...' : justifiesLeft === 0 ? '🔒' : '💅 justify'}
+                    {isLoading ? '✨ ...' : justifiesLeft === 0 ? '🔒' : t('home.justify_btn')}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -468,7 +463,7 @@ export default function HomeScreen() {
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.buttonText}>
-                    {isLogging ? '✨ ...' : '📝 log it'}
+                    {isLogging ? '✨ ...' : t('home.log_btn')}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -478,8 +473,8 @@ export default function HomeScreen() {
           {/* ── Hints row ────────────────────────────────── */}
           <Text style={styles.justifiesRemainingText}>
             {justifiesLeft > 0
-              ? `${justifiesLeft} free justify${justifiesLeft === 1 ? '' : 's'} left today ✨`
-              : "you've used all 3 today — upgrade for unlimited 💖"}
+              ? t('home.free_count', { count: justifiesLeft })
+              : t('home.free_count_zero')}
           </Text>
 
           {/* ── Thinking cat while loading ──────────── */}
@@ -503,7 +498,7 @@ export default function HomeScreen() {
                 price={parsedPrice}
               />
               {/* Jar toast */}
-              {jarToast !== null && (
+                {jarToast !== null && (
                 <TouchableOpacity
                   onPress={handleAddToJar}
                   activeOpacity={jarAdded ? 1 : 0.7}
@@ -511,8 +506,8 @@ export default function HomeScreen() {
                 >
                   <Text style={styles.jarToastText}>
                     {jarAdded
-                      ? `🫙 $${jarToast.toFixed(2)} added to your savings jar!`
-                      : `🫙 tap to save $${jarToast.toFixed(2)} in girl math savings`}
+                      ? t('home.added_to_jar', { amount: jarToast?.toFixed(2) })
+                      : t('home.add_to_jar', { amount: jarToast?.toFixed(2) })}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -523,7 +518,7 @@ export default function HomeScreen() {
                   style={styles.logThisTooBtn}
                 >
                   <Text style={styles.logThisTooText}>
-                    📝 log this purchase too (free)
+                    {t('home.log_this_too')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -535,7 +530,7 @@ export default function HomeScreen() {
               <Text style={styles.logConfirmText}>{logConfirmMsg}</Text>
               {showJarNudge && (
                 <Text style={styles.jarNudgeText}>
-                  psst — justify first next time to earn girl math savings 🫙
+                  {t('home.jar_nudge')}
                 </Text>
               )}
             </GradientCard>
@@ -543,24 +538,24 @@ export default function HomeScreen() {
 
           {/* ── Money Vibe + Aura (collapsible) ──────── */}
           {hasMoneyCtx && parsedPrice > 0 && spendable && (
-            <CollapsibleSection title="✨ your money vibe">
+            <CollapsibleSection title={t('home.money_vibe_title')}>
               <Text style={styles.computedRow}>
-                spendable per period: {fmt$(spendable.perPeriod)}
+                {t('home.spendable_per_period', { amount: fmt$(spendable.perPeriod) })}
               </Text>
               <Text style={styles.computedRow}>
-                spendable this month: {fmt$(spendable.monthly)}
+                {t('home.spendable_monthly', { amount: fmt$(spendable.monthly) })}
               </Text>
               <Text style={styles.computedRow}>
-                this purchase: {spendable.purchasePct.toFixed(1)}% of spendable
+                {t('home.purchase_pct', { pct: spendable.purchasePct.toFixed(1) })}
               </Text>
               {periodExpenses.total > 0 && (
                 <Text style={styles.computedRow}>
-                  💸 logged this period: {fmt$(periodExpenses.total)}
+                  {t('home.logged_period', { amount: fmt$(periodExpenses.total) })}
                 </Text>
               )}
               {spendable.perPeriod <= 0 && (
                 <Text style={styles.warnText}>
-                  💀 bestie your spendable is negative… broke aura detected
+                  {t('home.broke_aura')}
                 </Text>
               )}
               <View style={{ marginTop: 8 }}>
@@ -582,9 +577,9 @@ export default function HomeScreen() {
               style={styles.modeBadgeCat}
             />
             <Text style={styles.modeBadgeText}>
-              {personality === 'delulu' ? 'delulu mode' : personality === 'responsible' ? 'responsible bestie' : 'chaotic spender'}
+              {personality === 'delulu' ? t('home.mode_delulu') : personality === 'responsible' ? t('home.mode_responsible') : t('home.mode_chaotic')}
             </Text>
-            <Text style={styles.modeBadgeHint}>change in settings ⚙️</Text>
+            <Text style={styles.modeBadgeHint}>{t('home.mode_change_hint')}</Text>
           </View>
 
           {/* ── Banner Ad (free users only) ──────────── */}
@@ -599,7 +594,7 @@ export default function HomeScreen() {
           )}
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>made with love 💖</Text>
+            <Text style={styles.footerText}>{t('home.footer')}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

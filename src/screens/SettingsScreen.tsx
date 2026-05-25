@@ -1,15 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Linking, TextInput } from 'react-native';
 import * as StoreReview from 'expo-store-review';
+import Constants from 'expo-constants';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
 import PersonalitySelector from '../components/PersonalitySelector';
 import { COLORS, AURA_THEME_OPTIONS, SPEND_CATEGORIES } from '../utils/theme';
 import { PersonalityMode, AuraTheme, SpendCategory, BudgetCategoryLimit } from '../types';
-import { loadState, saveMode, saveAuraTheme, loadAuraTheme, loadBudgetLimits, saveBudgetLimits } from '../utils/storage';
+import { loadState, saveMode, saveAuraTheme, loadAuraTheme, loadBudgetLimits, saveBudgetLimits, loadLanguage, saveLanguage, type SupportedLanguage } from '../utils/storage';
 import { requestNotifPermission, scheduleWeeklyRecap, cancelWeeklyRecap } from '../utils/notifications';
 import { restorePurchases, hasPremium } from '../utils/purchases';
 import { usePaywall } from '../context/PaywallContext';
@@ -18,6 +21,7 @@ const LEGAL_BASE = 'https://getgirlmath.app';
 const APPLE_EULA_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 export default function SettingsScreen() {
+  const { t, i18n: i18nInstance } = useTranslation();
   const [personality, setPersonality] = useState<PersonalityMode>('responsible');
   const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown');
   const [weeklyRecapOn, setWeeklyRecapOn] = useState(false);
@@ -26,6 +30,8 @@ export default function SettingsScreen() {
   const [budgetLimits, setBudgetLimits] = useState<BudgetCategoryLimit[]>([]);
   const [editingLimit, setEditingLimit] = useState<SpendCategory | null>(null);
   const [limitInput, setLimitInput] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [, forceUpdate] = useState({});
   const { showPaywall } = usePaywall();
 
   useFocusEffect(
@@ -43,6 +49,8 @@ export default function SettingsScreen() {
         setNotifStatus(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'unknown');
         const theme = await loadAuraTheme();
         setAuraTheme(theme);
+        const lang = await loadLanguage();
+        setSelectedLanguage(lang || (i18n.language as SupportedLanguage) || 'en');
         if (premium) {
           const limits = await loadBudgetLimits();
           setBudgetLimits(limits);
@@ -69,6 +77,14 @@ export default function SettingsScreen() {
     await saveAuraTheme(theme);
   };
 
+  const handleLanguageChange = async (lang: SupportedLanguage) => {
+    setSelectedLanguage(lang);
+    await saveLanguage(lang);
+    // Force re-render to ensure UI updates
+    forceUpdate({});
+    await i18n.changeLanguage(lang);
+  };
+
   const handleSaveLimit = async (category: SpendCategory) => {
     const val = parseFloat(limitInput);
     const updated = budgetLimits.filter(l => l.category !== category);
@@ -84,14 +100,14 @@ export default function SettingsScreen() {
   const handleEnableNotifs = async () => {
     if (notifStatus === 'denied') {
       Alert.alert(
-        'notifications blocked',
-        'go to Settings > GirlMath > Notifications and enable them manually 💕',
+        t('settings.notif_blocked_title'),
+        t('settings.notif_blocked_body'),
       );
       return;
     }
     const granted = await requestNotifPermission();
     setNotifStatus(granted ? 'granted' : 'denied');
-    if (granted) Alert.alert('yay! 🎉', 'bill reminders are on! you\'ll get pinged 3 days before, 1 day before, and on the due date 💸');
+    if (granted) Alert.alert(t('settings.notif_success_title'), t('settings.notif_success_body'));
   };
 
   return (
@@ -104,42 +120,42 @@ export default function SettingsScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.logoEmoji}>⚙️</Text>
-          <Text style={styles.title}>settings</Text>
-          <Text style={styles.subtitle}>YOUR VIBE, YOUR RULES</Text>
+          <Text style={styles.title}>{t('settings.title')}</Text>
+          <Text style={styles.subtitle}>{t('settings.subtitle')}</Text>
         </View>
 
         {/* Premium upgrade card */}
         {!isPremium && (
           <GradientCard>
-            <Text style={styles.sectionTitle}>💎 go premium</Text>
+            <Text style={styles.sectionTitle}>{t('settings.premium_title')}</Text>
             <Text style={styles.sectionHint}>
-              unlimited justifies, spending insights, export reports & more ✨
+              {t('settings.premium_hint')}
             </Text>
             <TouchableOpacity
               style={styles.upgradeBtn}
               activeOpacity={0.75}
               onPress={() => showPaywall()}
             >
-              <Text style={styles.upgradeBtnText}>upgrade to premium 👑</Text>
+              <Text style={styles.upgradeBtnText}>{t('settings.premium_cta')}</Text>
             </TouchableOpacity>
           </GradientCard>
         )}
         {isPremium && (
           <GradientCard>
-            <Text style={styles.sectionTitle}>👑 you're premium!</Text>
+            <Text style={styles.sectionTitle}>{t('settings.is_premium_title')}</Text>
             <Text style={styles.sectionHint}>
-              unlimited everything — you're literally that girl 💅
+              {t('settings.is_premium_hint')}
             </Text>
           </GradientCard>
         )}
 
         {/* Mode selector */}
         <GradientCard>
-          <Text style={styles.sectionTitle}>who's justifying today?</Text>
+          <Text style={styles.sectionTitle}>{t('settings.mode_title')}</Text>
           <Text style={styles.sectionHint}>
             {isPremium
-              ? 'all modes unlocked — switch it up anytime 💅'
-              : 'free tier: responsible only. upgrade for delulu & chaotic 💎'}
+              ? t('settings.mode_hint_premium')
+              : t('settings.mode_hint_free')}
           </Text>
           <PersonalitySelector
             selected={personality}
@@ -148,11 +164,38 @@ export default function SettingsScreen() {
           />
         </GradientCard>
 
+        {/* Language selector */}
+        <GradientCard>
+          <Text style={styles.sectionTitle}>{t('settings.language_title')}</Text>
+          <Text style={styles.sectionHint}>{t('settings.language_hint')}</Text>
+          <View style={styles.languageRow}>
+            {[
+              { key: 'en' as SupportedLanguage, label: 'English' },
+              { key: 'es' as SupportedLanguage, label: 'Español' },
+              { key: 'th' as SupportedLanguage, label: 'ไทย' },
+            ].map((lang) => (
+              <TouchableOpacity
+                key={lang.key}
+                style={[
+                  styles.langPill,
+                  selectedLanguage === lang.key && styles.langPillActive,
+                ]}
+                onPress={() => handleLanguageChange(lang.key)}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.langLabel, selectedLanguage === lang.key && styles.langLabelActive]}>
+                  {lang.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </GradientCard>
+
         {/* Aura meter theme */}
         <GradientCard>
-          <Text style={styles.sectionTitle}>✨ aura meter theme</Text>
+          <Text style={styles.sectionTitle}>{t('settings.aura_theme_title')}</Text>
           <Text style={styles.sectionHint}>
-            {isPremium ? 'pick your aesthetic 💅' : '🔒 premium feature — upgrade to unlock'}
+            {isPremium ? t('settings.aura_theme_hint_premium') : t('settings.aura_theme_hint_free')}
           </Text>
           <View style={styles.themeRow}>
             {AURA_THEME_OPTIONS.map((opt) => (
@@ -178,8 +221,8 @@ export default function SettingsScreen() {
         {/* Budget category limits (premium) */}
         {isPremium && (
           <GradientCard>
-            <Text style={styles.sectionTitle}>💰 budget limits</Text>
-            <Text style={styles.sectionHint}>set per-category limits for each pay period ✨</Text>
+            <Text style={styles.sectionTitle}>{t('settings.budget_limits_title')}</Text>
+            <Text style={styles.sectionHint}>{t('settings.budget_limits_hint')}</Text>
             {SPEND_CATEGORIES.map((cat) => {
               const existing = budgetLimits.find(l => l.category === cat.key);
               const isEditing = editingLimit === cat.key;
@@ -193,12 +236,12 @@ export default function SettingsScreen() {
                         value={limitInput}
                         onChangeText={setLimitInput}
                         keyboardType="decimal-pad"
-                        placeholder="limit $"
+                        placeholder={t('settings.limit_placeholder')}
                         placeholderTextColor={COLORS.textMuted}
                         autoFocus
                       />
                       <TouchableOpacity onPress={() => handleSaveLimit(cat.key)} style={styles.limitSaveBtn}>
-                        <Text style={styles.limitSaveBtnText}>save</Text>
+                        <Text style={styles.limitSaveBtnText}>{t('settings.save')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => setEditingLimit(null)} style={styles.limitCancelBtn}>
                         <Text style={styles.limitCancelText}>✕</Text>
@@ -210,7 +253,7 @@ export default function SettingsScreen() {
                       style={styles.limitBadge}
                     >
                       <Text style={styles.limitBadgeText}>
-                        {existing ? `$${existing.limit}` : 'set limit'}
+                        {existing ? `$${existing.limit}` : t('settings.set_limit')}
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -221,9 +264,9 @@ export default function SettingsScreen() {
         )}
         {/* Notifications card */}
         <GradientCard>
-          <Text style={styles.sectionTitle}>🔔 bill reminders</Text>
+          <Text style={styles.sectionTitle}>{t('settings.notif_title')}</Text>
           <Text style={styles.sectionHint}>
-            get pinged 3 days before, 1 day before, and on the due date of every bill 💸
+            {t('settings.notif_hint')}
           </Text>
           <View style={styles.notifRow}>
             <View style={[
@@ -231,16 +274,16 @@ export default function SettingsScreen() {
               notifStatus === 'granted' ? styles.notifOn : styles.notifOff,
             ]}>
               <Text style={styles.notifBadgeText}>
-                {notifStatus === 'granted' ? '✅ on' : '🔕 off'}
+                {notifStatus === 'granted' ? t('settings.notif_on') : t('settings.notif_off')}
               </Text>
             </View>
             {notifStatus !== 'granted' && (
               <TouchableOpacity style={styles.notifBtn} onPress={handleEnableNotifs} activeOpacity={0.7}>
-                <Text style={styles.notifBtnText}>enable reminders 💕</Text>
+                <Text style={styles.notifBtnText}>{t('settings.enable_reminders')}</Text>
               </TouchableOpacity>
             )}
             {notifStatus === 'granted' && (
-              <Text style={styles.notifGrantedHint}>reminders are active for all your bills ✨</Text>
+              <Text style={styles.notifGrantedHint}>{t('settings.notif_active')}</Text>
             )}
           </View>
           {notifStatus === 'granted' && (
@@ -260,16 +303,15 @@ export default function SettingsScreen() {
               <View style={[styles.notifBadge, weeklyRecapOn ? styles.notifOn : styles.notifOff]}>
                 <Text style={styles.notifBadgeText}>{weeklyRecapOn ? '✅ on' : '🔕 off'}</Text>
               </View>
-              <Text style={styles.notifGrantedHint}>📊 weekly spending recap (Sundays)</Text>
+              <Text style={styles.notifGrantedHint}>{t('settings.weekly_recap')} (Sundays)</Text>
             </TouchableOpacity>
           )}
         </GradientCard>
         {/* About card */}
         <GradientCard>
-          <Text style={styles.sectionTitle}>about GirlMath ✨</Text>
+          <Text style={styles.sectionTitle}>{t('settings.about_title')}</Text>
           <Text style={styles.aboutText}>
-            your spending bestie — justifying every purchase with{' '}
-            <Text style={styles.bold}>delulu logic</Text> and zero judgment 💕
+            {t('settings.about_body')}
           </Text>
           <View style={styles.divider} />
           <TouchableOpacity
@@ -279,11 +321,11 @@ export default function SettingsScreen() {
               if (await StoreReview.hasAction()) {
                 await StoreReview.requestReview();
               } else {
-                Alert.alert('💖 aww tysm!', 'Find us on the App Store and leave a rating — it means the world 🌟');
+                Alert.alert(t('settings.rate_alert_title'), t('settings.rate_alert_body'));
               }
             }}
           >
-            <Text style={styles.reviewBtnText}>⭐ rate GirlMath</Text>
+              <Text style={styles.reviewBtnText}>{t('settings.rate_btn')}</Text>
           </TouchableOpacity>
 
           {/* Restore Purchases */}
@@ -294,16 +336,16 @@ export default function SettingsScreen() {
               try {
                 const restored = await restorePurchases();
                 if (restored) {
-                  Alert.alert('💖 restored!', 'Your premium access has been restored.');
+                  Alert.alert(t('settings.restore_success_title'), t('settings.restore_success_body'));
                 } else {
-                  Alert.alert('no purchases found', 'We couldn\'t find any previous purchases on this Apple ID.');
+                  Alert.alert(t('settings.restore_none_title'), t('settings.restore_none_body'));
                 }
               } catch {
-                Alert.alert('oops', 'Something went wrong restoring purchases. Try again later.');
+                Alert.alert(t('settings.restore_error_title'), t('settings.restore_error_body'));
               }
             }}
           >
-            <Text style={styles.restoreBtnText}>🔄 restore purchases</Text>
+              <Text style={styles.restoreBtnText}>{t('settings.restore_btn')}</Text>
           </TouchableOpacity>
 
           <View style={styles.divider} />
@@ -311,15 +353,15 @@ export default function SettingsScreen() {
           {/* Legal links */}
           <View style={styles.legalRow}>
             <TouchableOpacity onPress={() => Linking.openURL(`${LEGAL_BASE}/privacy`)}>
-              <Text style={styles.legalLink}>privacy policy</Text>
+              <Text style={styles.legalLink}>{t('settings.privacy')}</Text>
             </TouchableOpacity>
             <Text style={styles.legalDot}>·</Text>
             <TouchableOpacity onPress={() => Linking.openURL(APPLE_EULA_URL)}>
-              <Text style={styles.legalLink}>terms of use</Text>
+              <Text style={styles.legalLink}>{t('settings.terms')}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.versionText}>version 1.1.0 💅</Text>
+          <Text style={styles.versionText}>version {Constants.expoConfig?.version ?? '1.2.0'} 💅</Text>
         </GradientCard>
       </ScrollView>
     </GradientBackground>
@@ -525,6 +567,34 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   themeLabelActive: {
+    color: COLORS.pinkHot,
+  },
+  languageRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  langPill: {
+    backgroundColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minWidth: 90,
+  },
+  langPillActive: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderColor: COLORS.pinkHot,
+  },
+  langLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+  langLabelActive: {
     color: COLORS.pinkHot,
   },
   limitRow: {

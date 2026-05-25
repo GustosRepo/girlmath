@@ -4,6 +4,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -15,6 +16,7 @@ import { TreatYourselfBudget } from '../types';
 
 export default function TreatYourselfScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [budget, setBudget] = useState<TreatYourselfBudget>({ monthlyLimit: 100, spent: 0, periodStart: new Date().toISOString() });
   const [spendInput, setSpendInput] = useState('');
   const [spendNote, setSpendNote] = useState('');
@@ -67,12 +69,12 @@ export default function TreatYourselfScreen() {
   };
 
   const vibeMessage = () => {
-    if (pct === 0) return "untouched budget energy 👼 stay strong (or don't)";
-    if (pct < 0.3) return "you're barely touching it — treat yourself a little more 👑";
-    if (pct < 0.6) return "in your balanced era ✨ living your best life responsibly";
-    if (pct < 0.8) return "getting a lil spendy but still within bounds 🌸";
-    if (pct < 1) return "almost at the limit bestie… tread carefully 💀";
-    return "treat budget is GONE. next period starts fresh 🫡";
+    if (pct === 0) return t('treat.vibe_untouched');
+    if (pct < 0.3) return t('treat.vibe_low');
+    if (pct < 0.6) return t('treat.vibe_mid');
+    if (pct < 0.8) return t('treat.vibe_high');
+    if (pct < 1) return t('treat.vibe_almost');
+    return t('treat.vibe_done');
   };
 
   return (
@@ -81,10 +83,10 @@ export default function TreatYourselfScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-              <Text style={styles.backText}>‹ tools</Text>
+              <Text style={styles.backText}>{t('treat.back')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>🎀 treat yourself</Text>
-            <Text style={styles.subtitle}>your guilt-free fun money 💅</Text>
+            <Text style={styles.title}>{t('treat.title')}</Text>
+            <Text style={styles.subtitle}>{t('treat.subtitle')}</Text>
 
             {/* Progress ring card */}
             <GradientCard>
@@ -97,7 +99,7 @@ export default function TreatYourselfScreen() {
                   }]} />
                   <View style={styles.ringInner}>
                     <Text style={[styles.ringPct, { color: ringColor }]}>{Math.round(pct * 100)}%</Text>
-                    <Text style={styles.ringLabel}>used</Text>
+                    <Text style={styles.ringLabel}>{t('treat.used')}</Text>
                   </View>
                 </View>
               </View>
@@ -105,19 +107,19 @@ export default function TreatYourselfScreen() {
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{fmt$(budget.spent)}</Text>
-                  <Text style={styles.statLabel}>spent</Text>
+                  <Text style={styles.statLabel}>{t('treat.spent_label')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={[styles.statValue, { color: remaining > 0 ? '#22C55E' : '#EF4444' }]}>
                     {fmt$(remaining)}
                   </Text>
-                  <Text style={styles.statLabel}>remaining</Text>
+                  <Text style={styles.statLabel}>{t('treat.remaining')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statValue}>{fmt$(budget.monthlyLimit)}</Text>
-                  <Text style={styles.statLabel}>limit</Text>
+                  <Text style={styles.statLabel}>{t('treat.limit_label')}</Text>
                 </View>
               </View>
 
@@ -126,7 +128,7 @@ export default function TreatYourselfScreen() {
 
             {/* Log a spend */}
             <GradientCard>
-              <Text style={styles.sectionTitle}>💸 log a treat spend</Text>
+              <Text style={styles.sectionTitle}>{t('treat.log_title')}</Text>
               <View style={styles.inputRow}>
                 <Text style={styles.dollar}>$</Text>
                 <TextInput
@@ -142,7 +144,7 @@ export default function TreatYourselfScreen() {
                 style={styles.noteInput}
                 value={spendNote}
                 onChangeText={setSpendNote}
-                placeholder="what was it? (optional)"
+                placeholder={t('treat.what_optional')}
                 placeholderTextColor={COLORS.textMuted}
               />
               {justConfirmed ? (
@@ -155,7 +157,7 @@ export default function TreatYourselfScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.logBtnText}>✨ log treat spend</Text>
+                    <Text style={styles.logBtnText}>{t('treat.log_btn')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -163,7 +165,7 @@ export default function TreatYourselfScreen() {
 
             {/* Edit limit */}
             <GradientCard>
-              <Text style={styles.sectionTitle}>🎯 budget limit</Text>
+              <Text style={styles.sectionTitle}>{t('treat.budget_title')}</Text>
               {editingLimit ? (
                 <View style={styles.limitEditRow}>
                   <Text style={styles.dollar}>$</Text>
@@ -175,20 +177,20 @@ export default function TreatYourselfScreen() {
                     autoFocus
                   />
                   <TouchableOpacity onPress={handleSaveLimit} style={styles.saveLimitBtn}>
-                    <Text style={styles.saveLimitText}>save</Text>
+                    <Text style={styles.saveLimitText}>{t('treat.save_limit')}</Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity onPress={() => setEditingLimit(true)} style={styles.limitDisplay}>
-                  <Text style={styles.limitDisplayText}>{fmt$(budget.monthlyLimit)} per period</Text>
-                  <Text style={styles.limitEditHint}>tap to change ✏️</Text>
+                  <Text style={styles.limitDisplayText}>{t('treat.per_period', { amount: fmt$(budget.monthlyLimit) })}</Text>
+                  <Text style={styles.limitEditHint}>{t('treat.tap_change')}</Text>
                 </TouchableOpacity>
               )}
             </GradientCard>
 
             {/* Reset */}
             <TouchableOpacity onPress={handleReset} style={styles.resetBtn}>
-              <Text style={styles.resetText}>🔄 reset for new period</Text>
+              <Text style={styles.resetText}>{t('treat.reset_btn')}</Text>
             </TouchableOpacity>
 
             <View style={{ height: 100 }} />

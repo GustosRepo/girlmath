@@ -1,8 +1,10 @@
+import './src/i18n'; // must be first — initialises i18next before any screen renders
+import { i18nReady } from './src/i18n';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text, View } from 'react-native';
+import { Text, View, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -56,20 +58,40 @@ export default function App() {
   // null = still checking storage, false = show onboarding, true = show app
   const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
   const [initialTab, setInitialTab] = useState<string>('Justify');
+  const [i18nLoaded, setI18nLoaded] = useState(false);
 
   useEffect(() => {
-    setupAndroidChannel();
+    // Safety timeout: if startup takes longer than 5s, unblock the app
+    const timeout = setTimeout(() => {
+      setI18nLoaded(true);
+      setHasOnboarded((prev) => prev ?? false);
+    }, 5000);
+
+    try { setupAndroidChannel(); } catch {}
     try { initRevenueCat(); } catch {}   // 🔑 RevenueCat init (may fail in Expo Go)
     try { initializeAds(); } catch {}    // 📢 AdMob init (may fail in Expo Go)
     (async () => {
+      // Wait for i18n to load saved language
+      await i18nReady;
+      setI18nLoaded(true);
+
       await runStorageMigrations();
       const val = await AsyncStorage.getItem(ONBOARDING_KEY);
       setHasOnboarded(!!val);
-    })().catch(() => setHasOnboarded(false));
+    })().catch(() => {
+      setI18nLoaded(true);
+      setHasOnboarded(false);
+    }).finally(() => {
+      clearTimeout(timeout);
+    });
+
+    return () => clearTimeout(timeout);
   }, []);
 
-  // Still reading AsyncStorage — render nothing to avoid flash
-  if (hasOnboarded === null) return null;
+  // Still loading — show splash background instead of blank white screen
+  if (hasOnboarded === null || !i18nLoaded) {
+    return <View style={styles.splash} />;
+  }
 
   // First-time user — show onboarding (full screen, no nav)
   if (!hasOnboarded) {
@@ -190,3 +212,10 @@ export default function App() {
     </PaywallProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    backgroundColor: '#FFB6D9', // matches splash screen background
+  },
+});

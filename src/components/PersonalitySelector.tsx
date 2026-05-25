@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { COLORS, PERSONALITY_OPTIONS } from '../utils/theme';
 import { PersonalityMode } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const MODE_CATS: Record<PersonalityMode, any> = {
   delulu: require('../../assets/largehappycat.png'),
@@ -16,9 +17,10 @@ interface PersonalitySelectorProps {
 }
 
 export default function PersonalitySelector({ selected, onSelect, lockedModes = [] }: PersonalitySelectorProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>who’s justifying today? 👇</Text>
+      <Text style={styles.title}>{t('settings.who_title')}</Text>
       {PERSONALITY_OPTIONS.map((opt) => {
         const isActive = selected === opt.key;
         const isLocked = lockedModes.includes(opt.key);
@@ -32,10 +34,10 @@ export default function PersonalitySelector({ selected, onSelect, lockedModes = 
             <Image source={MODE_CATS[opt.key]} style={[styles.catImg, isLocked && styles.catImgLocked]} />
             <View style={styles.optionText}>
               <Text style={[styles.optionLabel, isActive && styles.optionLabelActive]}>
-                {opt.label}
+                {t(`settings.mode_${opt.key}_label` as any)}
               </Text>
               <Text style={[styles.optionDesc, isActive && styles.optionDescActive]}>
-                {isLocked ? '💎 premium only — upgrade to unlock' : opt.desc}
+                {isLocked ? t('settings.premium_lock') : t(`settings.mode_${opt.key}_desc` as any)}
               </Text>
             </View>
             {isLocked && <Text style={styles.lockBadge}>🔒</Text>}

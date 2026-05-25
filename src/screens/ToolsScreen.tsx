@@ -6,6 +6,7 @@ import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
@@ -16,25 +17,26 @@ import { getGirlMathMoment } from '../utils/girlMathEngine';
 import { AuraScore } from '../types';
 
 const TOOLS = [
-  { key: 'Insights',          emoji: '📊', label: 'spending insights',      desc: 'charts + trends + the real numbers' },
-  { key: 'CanIAffordIt',     emoji: '🤔', label: 'can i afford it?',         desc: 'reality check without judgment' },
-  { key: 'CostPerUse',       emoji: '📈', label: 'cost per use',             desc: 'justify expensive stuff with math' },
-  { key: 'TreatYourself',    emoji: '🎀', label: 'treat yourself budget',    desc: 'your guilt-free fun money envelope' },
-  { key: 'SubscriptionAudit',emoji: '💳', label: 'subscription audit',       desc: 'face your monthly spending truth' },
-  { key: 'SavingsJar',       emoji: '🫙', label: 'savings jar',              desc: 'log every skip and watch it grow' },
-  { key: 'SavingsGoals',     emoji: '🎯', label: 'savings goals',            desc: 'set goals and save toward them' },
+  { key: 'Insights',          emoji: '📊', tKey: 'insights' },
+  { key: 'CanIAffordIt',     emoji: '🤔', tKey: 'afford' },
+  { key: 'CostPerUse',       emoji: '📈', tKey: 'cpu' },
+  { key: 'TreatYourself',    emoji: '🎀', tKey: 'treat' },
+  { key: 'SubscriptionAudit',emoji: '💳', tKey: 'subs' },
+  { key: 'SavingsJar',       emoji: '🫙', tKey: 'jar' },
+  { key: 'SavingsGoals',     emoji: '🎯', tKey: 'goals' },
 ];
 
-function auraLabel(score: number): { emoji: string; label: string; color: string } {
-  if (score >= 800) return { emoji: '✨', label: 'financially glowing', color: '#22C55E' };
-  if (score >= 600) return { emoji: '💚', label: 'healing era', color: '#84CC16' };
-  if (score >= 400) return { emoji: '🌸', label: 'balanced bestie', color: '#F59E0B' };
-  if (score >= 200) return { emoji: '😬', label: 'a lil broke coded', color: '#EF4444' };
-  return { emoji: '💀', label: 'broke aura', color: '#DC2626' };
+function auraLevel(score: number): { emoji: string; tKey: string; color: string } {
+  if (score >= 800) return { emoji: '✨', tKey: 'glowing', color: '#22C55E' };
+  if (score >= 600) return { emoji: '💚', tKey: 'healing', color: '#84CC16' };
+  if (score >= 400) return { emoji: '🌸', tKey: 'balanced', color: '#F59E0B' };
+  if (score >= 200) return { emoji: '😬', tKey: 'broke_lite', color: '#EF4444' };
+  return { emoji: '💀', tKey: 'broke', color: '#DC2626' };
 }
 
 export default function ToolsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const auraShotRef = useRef<ViewShot>(null);
   const momentShotRef = useRef<ViewShot>(null);
 
@@ -64,7 +66,7 @@ export default function ToolsScreen() {
     }, []),
   );
 
-  const aura = auraLabel(auraScore.score);
+  const aura = auraLevel(auraScore.score);
 
   const handleNewMoment = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -104,8 +106,8 @@ export default function ToolsScreen() {
     <ScreenTransition>
       <GradientBackground>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>🛠️ tools</Text>
-          <Text style={styles.subtitle}>your financial bestie toolkit ✨</Text>
+          <Text style={styles.title}>{t('tools.title')}</Text>
+          <Text style={styles.subtitle}>{t('tools.subtitle')}</Text>
 
           {/* Aura score */}
           <ViewShot ref={auraShotRef} options={{ format: 'png', quality: 1 }}>
@@ -114,8 +116,8 @@ export default function ToolsScreen() {
               <View style={styles.auraRow}>
                 <Text style={styles.auraEmoji}>{aura.emoji}</Text>
                 <View style={styles.auraInfo}>
-                  <Text style={[styles.auraLabel, { color: aura.color }]}>{aura.label}</Text>
-                  <Text style={styles.auraScore}>{auraScore.score} aura points</Text>
+                  <Text style={[styles.auraLabel, { color: aura.color }]}>{t(`tools.aura_${aura.tKey}` as any)}</Text>
+                  <Text style={styles.auraScore}>{t('tools.aura_points', { score: auraScore.score })}</Text>
                 </View>
                 <View style={[styles.auraMini, { borderColor: aura.color }]}>
                   <Text style={[styles.auraMiniNum, { color: aura.color }]}>{auraScore.score}</Text>
@@ -127,34 +129,34 @@ export default function ToolsScreen() {
                   backgroundColor: aura.color,
                 }]} />
               </View>
-              <Text style={styles.auraHint}>score updates when you log expenses ✨</Text>
-              <Text style={styles.shotWatermark}>girlmath app · your bestie for bad financial decisions 💅</Text>
+              <Text style={styles.auraHint}>{t('tools.aura_hint')}</Text>
+              <Text style={styles.shotWatermark}>{t('tools.watermark')}</Text>
             </GradientCard>
           </ViewShot>
           <TouchableOpacity onPress={handleShareAura} style={styles.cardShareBtn} activeOpacity={0.8}>
-            <Text style={styles.auraShareText}>📤 share aura</Text>
+            <Text style={styles.auraShareText}>{t('tools.share_aura')}</Text>
           </TouchableOpacity>
 
           {/* Girl math moment */}
           <ViewShot ref={momentShotRef} options={{ format: 'png', quality: 1 }}>
             <GradientCard>
               <Text style={styles.shotBrand}>💖 GirlMath</Text>
-              <Text style={styles.momentTitle}>💅 girl math moment</Text>
+              <Text style={styles.momentTitle}>{t('tools.moment_title')}</Text>
               <Text style={styles.momentText}>"{moment}"</Text>
-              <Text style={styles.shotWatermark}>girlmath app · your bestie for bad financial decisions 💅</Text>
+              <Text style={styles.shotWatermark}>{t('tools.watermark')}</Text>
             </GradientCard>
           </ViewShot>
           <View style={styles.momentBtns}>
             <TouchableOpacity onPress={handleNewMoment} style={styles.momentBtn} activeOpacity={0.8}>
-              <Text style={styles.momentBtnText}>✨ new moment</Text>
+              <Text style={styles.momentBtnText}>{t('tools.new_moment')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleShareMoment} style={styles.momentShareBtn} activeOpacity={0.8}>
-              <Text style={styles.momentShareText}>📤 share</Text>
+              <Text style={styles.momentShareText}>{t('tools.share')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Tool cards */}
-          <Text style={styles.toolsHeader}>your tools 🛠️</Text>
+          <Text style={styles.toolsHeader}>{t('tools.tools_header')}</Text>
           {TOOLS.map(tool => {
             const badge = badgeFor(tool.key);
             return (
@@ -171,14 +173,14 @@ export default function ToolsScreen() {
                     <Text style={styles.toolEmoji}>{tool.emoji}</Text>
                     <View style={styles.toolInfo}>
                       <View style={styles.toolTitleRow}>
-                        <Text style={styles.toolLabel}>{tool.label}</Text>
+                        <Text style={styles.toolLabel}>{t(`tools.tool_${tool.tKey}_label` as any)}</Text>
                         {badge !== '' && (
                           <View style={styles.toolBadge}>
                             <Text style={styles.toolBadgeText}>{badge}</Text>
                           </View>
                         )}
                       </View>
-                      <Text style={styles.toolDesc}>{tool.desc}</Text>
+                      <Text style={styles.toolDesc}>{t(`tools.tool_${tool.tKey}_desc` as any)}</Text>
                     </View>
                     <Text style={styles.toolArrow}>›</Text>
                   </View>

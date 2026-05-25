@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import * as Haptics from 'expo-haptics';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
@@ -81,6 +82,7 @@ function getResult(price: number, spendablePeriod: number, monthlyIncome: number
 
 export default function CanIAffordItScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [priceInput, setPriceInput] = useState('');
   const [moneyCtx, setMoneyCtx] = useState<MoneyContext>(DEFAULT_CTX);
   const [result, setResult] = useState<Result | null>(null);
@@ -112,38 +114,35 @@ export default function CanIAffordItScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-              <Text style={styles.backText}>‹ tools</Text>
+              <Text style={styles.backText}>{t('afford.back')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>🤔 can i afford it?</Text>
-            <Text style={styles.subtitle}>no judgment, just math ✨</Text>
+            <Text style={styles.title}>{t('afford.title')}</Text>
+            <Text style={styles.subtitle}>{t('afford.subtitle')}</Text>
 
             {!hasContext && (
               <GradientCard>
-                <Text style={styles.hintText}>
-                  💡 for a real answer, set up your income & bills in the Bills tab first.
-                  right now using general vibes only 👀
-                </Text>
+                <Text style={styles.hintText}>{t('afford.hint')}</Text>
               </GradientCard>
             )}
 
             {hasContext && (
               <GradientCard>
-                <Text style={styles.contextLabel}>your spendable per period</Text>
+                <Text style={styles.contextLabel}>{t('afford.spendable_label')}</Text>
                 <Text style={styles.contextValue}>
                   {fmt$(computeSpendable(moneyCtx, 0, 0).perPeriod)}
                 </Text>
-                <Text style={styles.contextSub}>after rent, bills & savings goal</Text>
+                <Text style={styles.contextSub}>{t('afford.spendable_sub')}</Text>
               </GradientCard>
             )}
 
             <GradientCard>
-              <Text style={styles.inputLabel}>💰 how much is it?</Text>
+              <Text style={styles.inputLabel}>{t('afford.input_label')}</Text>
               <View style={styles.priceRow}>
                 <Text style={styles.dollar}>$</Text>
                 <TextInput
                   style={styles.priceInput}
                   value={priceInput}
-                  onChangeText={t => { setPriceInput(t); setResult(null); }}
+                  onChangeText={v => { setPriceInput(v); setResult(null); }}
                   keyboardType="decimal-pad"
                   placeholder="0.00"
                   placeholderTextColor={COLORS.textMuted}
@@ -159,7 +158,7 @@ export default function CanIAffordItScreen() {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.checkBtnText}>🔮 check the vibe</Text>
+                  <Text style={styles.checkBtnText}>{t('afford.check_btn')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </GradientCard>
@@ -176,19 +175,19 @@ export default function CanIAffordItScreen() {
                   <View style={styles.breakdownRow}>
                     <View style={styles.breakdownItem}>
                       <Text style={styles.breakdownValue}>{fmt$(parseFloat(priceInput))}</Text>
-                      <Text style={styles.breakdownLabel}>purchase</Text>
+                      <Text style={styles.breakdownLabel}>{t('afford.breakdown_purchase')}</Text>
                     </View>
                     <Text style={styles.breakdownDiv}>÷</Text>
                     <View style={styles.breakdownItem}>
                       <Text style={styles.breakdownValue}>{fmt$(spendable.perPeriod)}</Text>
-                      <Text style={styles.breakdownLabel}>spendable</Text>
+                      <Text style={styles.breakdownLabel}>{t('afford.breakdown_spendable')}</Text>
                     </View>
                     <Text style={styles.breakdownDiv}>=</Text>
                     <View style={styles.breakdownItem}>
                       <Text style={[styles.breakdownValue, { color: result.color }]}>
                         {spendable.purchasePct.toFixed(1)}%
                       </Text>
-                      <Text style={styles.breakdownLabel}>of budget</Text>
+                      <Text style={styles.breakdownLabel}>{t('afford.breakdown_of_budget')}</Text>
                     </View>
                   </View>
                 )}

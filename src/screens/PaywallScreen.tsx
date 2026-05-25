@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
 import {
   purchaseMonthly,
   purchaseYearly,
@@ -36,17 +37,12 @@ const SPARKLE_POSITIONS = [
   { bottom: -10, right: 12 },
 ];
 
-const KITTY_COPY = [
-  '"this is basically free bestie 💸"',
-  '"future you will be SO proud 🌟"',
-  '"support your emotional support cat 🐱"',
-];
-
 interface Props {
   onClose: () => void;
 }
 
 export default function PaywallScreen({ onClose }: Props) {
+  const { t } = useTranslation();
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('yearly');
   const [purchasing, setPurchasing] = useState(false);
 
@@ -122,8 +118,8 @@ export default function PaywallScreen({ onClose }: Props) {
       if (success) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await AsyncStorage.setItem(PAYWALL_DISMISSED_KEY, 'true');
-        Alert.alert('💖 Welcome bestie!', "You're officially premium. The world is your wallet.", [
-          { text: "let's go 💅", onPress: onClose },
+        Alert.alert(t('paywall.welcome_title'), t('paywall.welcome_body'), [
+          { text: t('paywall.welcome_cta'), onPress: onClose },
         ]);
       }
     } finally {
@@ -201,15 +197,13 @@ export default function PaywallScreen({ onClose }: Props) {
 
         {/* ── HEADLINE ──────────────────────────────────────── */}
         <View style={styles.headlineWrap}>
-          <Text style={styles.headline}>Upgrade your spending bestie 💖</Text>
-          <Text style={styles.subheadline}>
-            Unlock unlimited justifies, spending insights, export reports & budget alerts
-          </Text>
+          <Text style={styles.headline}>{t('paywall.headline')}</Text>
+          <Text style={styles.subheadline}>{t('paywall.subheadline')}</Text>
         </View>
 
         {/* ── KITTY MICROCOPY ───────────────────────────────── */}
         <View style={styles.micropyCopyWrap}>
-          {KITTY_COPY.map((line, i) => (
+          {([t('paywall.kitty_1'), t('paywall.kitty_2'), t('paywall.kitty_3')] as string[]).map((line, i) => (
             <View key={i} style={styles.microcopyBubble}>
               <Text style={styles.microcopyText}>{line}</Text>
             </View>
@@ -240,19 +234,14 @@ export default function PaywallScreen({ onClose }: Props) {
               )}
 
               <Text style={styles.planEmoji}>🌸</Text>
-              <Text style={styles.planName}>Monthly</Text>
+              <Text style={styles.planName}>{t('paywall.monthly')}</Text>
               <Text style={styles.planPrice}>$2.99</Text>
-              <Text style={styles.planPer}>/month</Text>
+              <Text style={styles.planPer}>{t('paywall.per_month')}</Text>
 
               <View style={styles.featureDivider} />
 
               <View style={styles.featureList}>
-                {[
-                  '✨ Unlimited justifies',
-                  '📊 Export spending reports',
-                  '💡 Spending insights',
-                  '🔔 Budget alerts',
-                ].map((f, i) => (
+                {(t('paywall.features_monthly', { returnObjects: true }) as string[]).map((f, i) => (
                   <Text key={i} style={styles.featureRow}>{f}</Text>
                 ))}
               </View>
@@ -285,23 +274,18 @@ export default function PaywallScreen({ onClose }: Props) {
 
               {/* Badge */}
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>save 58% ✨</Text>
+                  <Text style={styles.badgeText}>{t('paywall.badge_save')}</Text>
               </View>
 
               <Text style={styles.planEmoji}>👑</Text>
-              <Text style={[styles.planName, styles.planNameLifetime]}>Yearly</Text>
+              <Text style={[styles.planName, styles.planNameLifetime]}>{t('paywall.yearly')}</Text>
               <Text style={[styles.planPrice, styles.planPriceLifetime]}>$14.99</Text>
-              <Text style={[styles.planPer, styles.planPerLifetime]}>/year</Text>
+              <Text style={[styles.planPer, styles.planPerLifetime]}>{t('paywall.per_year')}</Text>
 
               <View style={[styles.featureDivider, { borderColor: 'rgba(255,255,255,0.5)' }]} />
 
               <View style={styles.featureList}>
-                {[
-                  '💎 Everything unlocked',
-                  '♾️ Unlimited justifies & exports',
-                  '💡 Spending insights & alerts',
-                  '🎨 All future features',
-                ].map((f, i) => (
+                {(t('paywall.features_yearly', { returnObjects: true }) as string[]).map((f, i) => (
                   <Text key={i} style={[styles.featureRow, styles.featureRowLifetime]}>{f}</Text>
                 ))}
               </View>
@@ -341,17 +325,13 @@ export default function PaywallScreen({ onClose }: Props) {
               pointerEvents="none"
             />
             <Text style={styles.ctaText}>
-              {purchasing
-                ? 'unlocking... 🔓'
-                : `Unlock unlimited girl math 💅`}
+              {purchasing ? t('paywall.cta_loading') : t('paywall.cta')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <Text style={styles.planHint}>
-          {selectedPlan === 'monthly'
-            ? '💌 $2.99/mo · cancel anytime bestie'
-            : '👑 $14.99/yr · that\'s only $1.25/mo bestie'}
+          {selectedPlan === 'monthly' ? t('paywall.hint_monthly') : t('paywall.hint_yearly')}
         </Text>
 
         {/* ── SECONDARY ACTIONS ─────────────────────────────── */}
@@ -360,20 +340,17 @@ export default function PaywallScreen({ onClose }: Props) {
           onPress={handleDismiss}
           style={styles.dismissBtn}
         >
-          <Text style={styles.dismissText}>Not now bestie</Text>
+          <Text style={styles.dismissText}>{t('paywall.dismiss')}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.legalText}>
-          Prices shown in USD · Auto-renews unless cancelled{' '}
-          · Restore purchases in Settings
-        </Text>
+        <Text style={styles.legalText}>{t('paywall.legal')}</Text>
         <View style={styles.legalLinksRow}>
           <TouchableOpacity onPress={() => Linking.openURL('https://getgirlmath.app/privacy')}>
-            <Text style={styles.legalLink}>Privacy Policy</Text>
+            <Text style={styles.legalLink}>{t('paywall.privacy')}</Text>
           </TouchableOpacity>
           <Text style={styles.legalDot}> · </Text>
           <TouchableOpacity onPress={() => Linking.openURL('https://getgirlmath.app/terms')}>
-            <Text style={styles.legalLink}>Terms of Use</Text>
+            <Text style={styles.legalLink}>{t('paywall.terms')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
