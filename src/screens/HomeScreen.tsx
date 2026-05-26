@@ -32,7 +32,6 @@ import { computeSpendable, fmt$ } from '../utils/finance';
 import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore, addToSavingsJar } from '../utils/storage';
 import * as StoreReview from 'expo-store-review';
 import { usePaywall } from '../context/PaywallContext';
-import { hasPremium } from '../utils/purchases';
 import { maybeSendBudgetAlert } from '../utils/notifications';
 
 import GradientBackground from '../components/GradientBackground';
@@ -72,7 +71,7 @@ function isVagueName(name: string): boolean {
 
 export default function HomeScreen() {
   const { t } = useTranslation();
-  const { showPaywall } = usePaywall();
+  const { showPaywall, isPremium } = usePaywall();
 
   // ── core state ────────────────────────────────────────
   const [itemName, setItemName] = useState('');
@@ -95,12 +94,7 @@ export default function HomeScreen() {
   const hasMoneyCtx = moneyCtx.payAmount > 0;
   const [justifyCount, setJustifyCount] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
-  const [isPremium, setIsPremium] = useState(false);
   const { show: showInterstitial } = useInterstitialAd();
-
-  useEffect(() => {
-    hasPremium().then(setIsPremium).catch(() => {});
-  }, []);
 
   // ── expense logging ───────────────────────────────────
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
@@ -354,8 +348,7 @@ export default function HomeScreen() {
         const spendableAmt = computeSpendable(moneyCtx, 0, updated.total).perPeriod + updated.total;
         if (spendableAmt > 0) {
           const spentPct = (updated.total / spendableAmt) * 100;
-          const premium = await hasPremium();
-          if (premium) {
+          if (isPremium) {
             maybeSendBudgetAlert(spentPct);
           }
         }

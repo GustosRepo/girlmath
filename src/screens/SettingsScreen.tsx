@@ -14,7 +14,7 @@ import { COLORS, AURA_THEME_OPTIONS, SPEND_CATEGORIES } from '../utils/theme';
 import { PersonalityMode, AuraTheme, SpendCategory, BudgetCategoryLimit } from '../types';
 import { loadState, saveMode, saveAuraTheme, loadAuraTheme, loadBudgetLimits, saveBudgetLimits, loadLanguage, saveLanguage, type SupportedLanguage } from '../utils/storage';
 import { requestNotifPermission, scheduleWeeklyRecap, cancelWeeklyRecap } from '../utils/notifications';
-import { restorePurchases, hasPremium } from '../utils/purchases';
+import { restorePurchases } from '../utils/purchases';
 import { usePaywall } from '../context/PaywallContext';
 
 const LEGAL_BASE = 'https://getgirlmath.app';
@@ -25,25 +25,22 @@ export default function SettingsScreen() {
   const [personality, setPersonality] = useState<PersonalityMode>('responsible');
   const [notifStatus, setNotifStatus] = useState<'granted' | 'denied' | 'unknown'>('unknown');
   const [weeklyRecapOn, setWeeklyRecapOn] = useState(false);
-  const [isPremium, setIsPremium] = useState(false);
   const [auraTheme, setAuraTheme] = useState<AuraTheme>('default');
   const [budgetLimits, setBudgetLimits] = useState<BudgetCategoryLimit[]>([]);
   const [editingLimit, setEditingLimit] = useState<SpendCategory | null>(null);
   const [limitInput, setLimitInput] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
   const [, forceUpdate] = useState({});
-  const { showPaywall } = usePaywall();
+  const { showPaywall, isPremium } = usePaywall();
 
   useFocusEffect(
     useCallback(() => {
       (async () => {
         const saved = await loadState();
-        const premium = await hasPremium();
-        setIsPremium(premium);
         // If not premium and saved mode is locked, fall back to responsible
         if (saved.lastMode) {
           const mode = saved.lastMode;
-          setPersonality(!premium && (mode === 'delulu' || mode === 'chaotic') ? 'responsible' : mode);
+          setPersonality(!isPremium && (mode === 'delulu' || mode === 'chaotic') ? 'responsible' : mode);
         }
         const { status } = await Notifications.getPermissionsAsync();
         setNotifStatus(status === 'granted' ? 'granted' : status === 'denied' ? 'denied' : 'unknown');
@@ -51,12 +48,12 @@ export default function SettingsScreen() {
         setAuraTheme(theme);
         const lang = await loadLanguage();
         setSelectedLanguage(lang || (i18n.language as SupportedLanguage) || 'en');
-        if (premium) {
+        if (isPremium) {
           const limits = await loadBudgetLimits();
           setBudgetLimits(limits);
         }
       })();
-    }, []),
+    }, [isPremium]),
   );
 
   const handleModeChange = useCallback((m: PersonalityMode) => {

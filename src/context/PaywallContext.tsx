@@ -12,11 +12,17 @@ interface PaywallContextValue {
   showPaywall: () => void | Promise<void>;
   /** True while paywall is visible */
   paywallVisible: boolean;
+  /** Whether the current user has an active premium subscription */
+  isPremium: boolean;
+  /** Re-check premium status from RevenueCat (call after purchase) */
+  refreshPremium: () => Promise<void>;
 }
 
 const PaywallContext = createContext<PaywallContextValue>({
   showPaywall: () => {},
   paywallVisible: false,
+  isPremium: false,
+  refreshPremium: async () => {},
 });
 
 export function usePaywall() {
@@ -28,16 +34,21 @@ export function usePaywall() {
 // ─────────────────────────────────────────────────────────────────────────────
 export function PaywallProvider({ children }: { children: React.ReactNode }) {
   const [visible, setVisible] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
+
+  const refreshPremium = async () => {
+    const premium = await hasPremium();
+    setIsPremium(premium);
+  };
 
   // First-launch gate — show once if never dismissed AND not already premium
   useEffect(() => {
     (async () => {
       const dismissed = await AsyncStorage.getItem(PAYWALL_DISMISSED_KEY);
-      if (dismissed) return;
       const premium = await hasPremium();
-      if (premium) {
-        // Already subscribed — persist the flag so we never bother them again
-        await AsyncStorage.setItem(PAYWALL_DISMISSED_KEY, 'true');
+      setIsPremium(premium);
+      if (dismissed || premium) {
+        if (premium) await AsyncStorage.setItem(PAYWALL_DISMISSED_KEY, 'true');
         return;
       }
       setVisible(true);
@@ -49,10 +60,13 @@ export function PaywallProvider({ children }: { children: React.ReactNode }) {
     if (premium) return; // already subscribed, never show
     setVisible(true);
   };
-  const handleClose = () => setVisible(false);
+  const handleClose = async () => {
+    await refreshPremium();
+    setVisible(false);
+  };
 
   return (
-    <PaywallContext.Provider value={{ showPaywall, paywallVisible: visible }}>
+    <PaywallContext.Provider value={{ showPaywall, paywallVisible: visible, isPremium, refreshPremium }}>
       <Modal
         visible={visible}
         animationType="slide"
