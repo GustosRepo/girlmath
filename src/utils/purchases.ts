@@ -62,6 +62,7 @@ export function initRevenueCat(userId?: string) {
 
 /** Returns true if the user has an active "premium" entitlement. */
 export async function hasPremium(): Promise<boolean> {
+  if (!_initialized) return false;
   try {
     const info: CustomerInfo = await Purchases.getCustomerInfo();
     return !!info.entitlements.active[ENTITLEMENT_ID];
@@ -72,6 +73,10 @@ export async function hasPremium(): Promise<boolean> {
 
 /** Purchase the monthly subscription. Returns true on success. */
 export async function purchaseMonthly(): Promise<boolean> {
+  if (!_initialized) {
+    Alert.alert('Purchase failed 😢', 'Purchases are not available right now. Please restart the app and try again.');
+    return false;
+  }
   try {
     const offerings = await Purchases.getOfferings();
     const monthly = offerings.current?.availablePackages.find(
@@ -96,6 +101,10 @@ export async function purchaseMonthly(): Promise<boolean> {
 
 /** Purchase the yearly subscription. Returns true on success. */
 export async function purchaseYearly(): Promise<boolean> {
+  if (!_initialized) {
+    Alert.alert('Purchase failed 😢', 'Purchases are not available right now. Please restart the app and try again.');
+    return false;
+  }
   try {
     const offerings = await Purchases.getOfferings();
     const yearly = offerings.current?.availablePackages.find(
@@ -120,6 +129,10 @@ export async function purchaseYearly(): Promise<boolean> {
 
 /** Restore previous purchases. Returns true if premium was restored. */
 export async function restorePurchases(): Promise<boolean> {
+  if (!_initialized) {
+    Alert.alert('Restore failed 😢', 'Purchases are not available right now. Please restart the app and try again.');
+    return false;
+  }
   try {
     const info = await Purchases.restorePurchases();
     return !!info.entitlements.active[ENTITLEMENT_ID];

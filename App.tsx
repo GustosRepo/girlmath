@@ -28,6 +28,10 @@ import SavingsGoalsScreen from './src/screens/SavingsGoalsScreen';
 import { PaywallProvider } from './src/context/PaywallContext';
 import OnboardingScreen, { ONBOARDING_KEY } from './src/screens/OnboardingScreen';
 
+// Configure RevenueCat at module load time — before any component renders
+// so PaywallProvider's useEffect never runs against an uninitialised SDK.
+try { initRevenueCat(); } catch {}
+
 const Tab = createBottomTabNavigator();
 const ToolsStack = createNativeStackNavigator();
 
@@ -68,7 +72,6 @@ export default function App() {
     }, 5000);
 
     try { setupAndroidChannel(); } catch {}
-    try { initRevenueCat(); } catch {}   // 🔑 RevenueCat init (may fail in Expo Go)
     try { initializeAds(); } catch {}    // 📢 AdMob init (may fail in Expo Go)
     (async () => {
       // Wait for i18n to load saved language
