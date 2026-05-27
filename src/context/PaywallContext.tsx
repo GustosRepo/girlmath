@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Modal } from 'react-native';
+import { AppState, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PaywallScreen, { PAYWALL_DISMISSED_KEY } from '../screens/PaywallScreen';
 import { hasPremium } from '../utils/purchases';
@@ -53,6 +53,16 @@ export function PaywallProvider({ children }: { children: React.ReactNode }) {
       }
       setVisible(true);
     })();
+  }, []);
+
+  // Re-check premium whenever the app comes back to the foreground
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        refreshPremium();
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   const showPaywall = async () => {
