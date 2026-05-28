@@ -8,6 +8,21 @@ import {
 
 // ── helpers ────────────────────────────────────────────────
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+type ContentLocale = 'en' | 'th';
+const contentLocale = (locale?: string): ContentLocale =>
+  locale?.toLowerCase().startsWith('th') ? 'th' : 'en';
+
+const thCategoryLabel = (cat: string): string => ({
+  shopping: 'ช้อปปิ้ง',
+  food: 'ของกิน',
+  beauty: 'บิวตี้',
+  shoes: 'รองเท้า',
+  health: 'สุขภาพ',
+  tech: 'แกดเจ็ต',
+  fun: 'ความสนุก',
+  home: 'ของเข้าบ้าน',
+  misc: 'อื่นๆ',
+}[cat] ?? cat);
 
 // ── base templates (item, price) ───────────────────────────
 const baseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string>> = {
@@ -94,8 +109,97 @@ const baseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string>>
   ],
 };
 
+const thBaseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string>> = {
+  delulu: [
+    (i, p) => `แก ${i} ราคา $${p} นี่ไม่ใช่รายจ่ายนะ นี่คือการลงทุนกับเวอร์ชันที่แฮปปี้ขึ้นของตัวเอง 💅 ใช้บ่อยๆ หารแล้วเหลือนิดเดียวเอง`,
+    (i, p) => `${i} มาอยู่ตรงหน้าแล้ว แปลว่าจังหวะชีวิตจัดมาให้แล้วอะ $${p} คือค่าความสุขแบบมีใบเสร็จ ✨`,
+    (i, p) => `ถ้าไม่เอา ${i} ตอนนี้ เดี๋ยวกลับบ้านไปคิดถึงอีกหลายวันนะ พื้นที่ในหัวก็มีราคานะคะ $${p} ซื้อความสบายใจไปเลย`,
+    (i, p) => `${i} ราคา $${p}? ถ้าหารตามจำนวนครั้งที่จะใช้ มันแทบจะเป็นเศษเงินแล้ว ของมันต้องมี 🧮`,
+    (i, p) => `เอาจริง $${p} สำหรับ ${i} คือค่าคอมพลิเมนต์ล่วงหน้า คนต้องทักแน่ และความมั่นใจประเมินค่าไม่ได้ 👑`,
+    (i, p) => `${i} ไม่ได้แพง มันแค่เลือกเจ้าของที่คู่ควร แล้วเจ้าของก็คือแกไง $${p} จบ กดเลย 💖`,
+    (i, p) => `วันนี้ $${p} อาจดูเป็นเงิน แต่พรุ่งนี้มันจะกลายเป็นความสุขเวลาได้ใช้ ${i} นี่แหละคณิตศาสตร์สายใจฟู 📈`,
+    (i, p) => `ถ้า ${i} หมดก่อน แกจะเสียใจมากกว่าเสีย $${p} แน่นอน ซื้อความไม่เสียดายไว้ก่อน ฉลาดสุดๆ`,
+  ],
+  responsible: [
+    (i, p) => `${i} ราคา $${p} โอเค มาดูแบบเพื่อนเตือนเพื่อน: บิลจ่ายแล้ว เงินกินอยู่โอเค ถ้าใช่ก็ซื้อได้แบบไม่ต้องรู้สึกผิด 💖`,
+    (i, p) => `อยากได้ ${i} เข้าใจเลย $${p} ถ้าอยู่ในงบสนุกของเดือนนี้ ก็ถือว่าเป็นการใช้เงินที่ตั้งใจ ไม่ใช่หลุดมือ 📊`,
+    (i, p) => `${i} ที่ $${p} ถามตัวเองนิดนึงว่ายังอยากได้อยู่ไหมถ้ารอถึงพรุ่งนี้ ถ้าคำตอบยังใช่ ไฟเขียวแบบมีสติ ✅`,
+    (i, p) => `ดีแล้วที่เช็กก่อนซื้อ ${i} ราคา $${p} ถ้าเทียบราคาแล้วนี่ดีสุด ก็เป็นดีลที่รับได้เลย`,
+    (i, p) => `${i} ราคา $${p} ถ้ามันแทนของเดิมที่ใช้จริง หรือทำให้ชีวิตสะดวกขึ้น อันนี้จัดว่าเป็นอัปเกรดที่มีเหตุผลนะ`,
+    (i, p) => `$${p} สำหรับ ${i} ไม่ได้น่ากลัว ถ้าไม่ได้เบียดเงินสำคัญ แค่ล็อกงบที่เหลือไว้หน่อย จะได้ซื้อแล้วสบายใจ`,
+    (i, p) => `ถ้า ${i} เป็นของที่ใช้ประจำ $${p} จะคุ้มขึ้นทุกครั้งที่หยิบมาใช้ แต่ถ้าซื้อเพราะโมเมนต์เฉยๆ ลองพักไว้ก่อนก็ได้`,
+    (i, p) => `ชอบ ${i} ให้แกนะ $${p} ถือว่าเป็นรางวัลได้ แค่ไม่ให้รางวัลชิ้นเดียวลากไปเป็นทั้งตะกร้าก็พอ 🎯`,
+  ],
+  chaotic: [
+    (i, p) => `$${p} สำหรับ ${i}? แก เราใส่ตะกร้าทางใจไปแล้วตั้งแต่เห็นรูป 🛒💅`,
+    (i, p) => `สมองบอกให้คิดก่อน แต่หัวใจพิมพ์เลขบัตรไปแล้ว ${i} ราคา $${p} จังหวะนี้ต้องไปต่อ 🔥`,
+    (i, p) => `${i} ที่ $${p} คือพล็อตสำคัญของชีวิตช่วงนี้ อย่าขัดบทตัวเองค่ะ 🎬`,
+    (i, p) => `เหตุผลที่ควรซื้อ ${i}: หนึ่ง อยากได้ สอง ราคา $${p} สาม เราเหนื่อยมาทั้งอาทิตย์ จบการนำเสนอ 💸`,
+    (i, p) => `บัญชีอาจมีคำถาม แต่เราไม่มีเวลาตอบ ${i} ราคา $${p} และใจมันเลือกแล้ว 😈`,
+    (i, p) => `${i} ราคา $${p} นี่ไม่ใช่อิมพัลส์นะ แค่ตัดสินใจเร็วเพราะรู้ใจตัวเองมากพอ 💳`,
+    (i, p) => `บางคนฮีลใจด้วยการนอน เราฮีลใจด้วย ${i} ราคา $${p} ทุกคนมีวิธีของตัวเอง 🫠`,
+    (i, p) => `ข้อดี: ได้ ${i}\nข้อเสีย: จ่าย $${p}\nสรุป: ข้อดีชนะ เพราะน่ารักกว่า 💅`,
+  ],
+};
+
 // ── budget-aware add-ons ───────────────────────────────────
-function budgetAddon(mode: PersonalityMode, s: SpendableResult): string {
+function budgetAddonTh(mode: PersonalityMode, s: SpendableResult): string {
+  const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
+
+  if (s.perPeriod <= 0) {
+    const negatives: Record<PersonalityMode, string[]> = {
+      responsible: [
+        `\n\n⚠️ เตือนแบบรักนะ งบใช้จ่ายรอบนี้ติดลบแล้ว รอเงินเข้ารอบหน้าจะสบายใจกว่า`,
+        `\n\n⚠️ ตัวเลขบอกว่ารอบนี้แน่นแล้วอะ เก็บไว้ใน wishlist ก่อน พอเงินเข้าแล้วค่อยฉลองแบบไม่เครียด 💕`,
+      ],
+      delulu: [
+        `\n\nงบบอกว่าไม่ แต่ใจบอกว่าใช่ และใจไม่เคยเปิดชีตคำนวณค่ะ ✨`,
+        `\n\nตัวเลขติดลบก็จริง แต่ฟีลตอนใช้ของใหม่เป็นบวกมากนะ คิดแบบนี้ก่อน 🔮`,
+      ],
+      chaotic: [
+        `\n\nงบติดลบแต่ใจเต็มร้อยมาก แรงต้านจากบัญชีชั่วคราวเท่านั้น 🔥`,
+        `\n\nเงินในงบอาจบอกพักก่อน แต่พลังการช้อปบอกว่าเรื่องนี้ต้องมีภาคต่อ 💸`,
+      ],
+    };
+    return pick(negatives[mode]);
+  }
+
+  if (pct > 15) {
+    const high: Record<PersonalityMode, string[]> = {
+      responsible: [
+        `\n\n📊 อันนี้ประมาณ ${pct.toFixed(1)}% ของเงินใช้จ่ายรอบนี้ แอบก้อนใหญ่ ลองรอหนึ่งคืนหรือหาดีลก่อนจะชัวร์กว่า`,
+        `\n\n📊 ${pct.toFixed(1)}% ของงบใช้จ่ายนะ ซื้อได้ถ้าตั้งใจจริง แต่เดือนนี้อาจต้องคุมอย่างอื่นนิดนึง`,
+      ],
+      delulu: [
+        `\n\n${pct.toFixed(1)}% อาจดูเยอะ แต่ความสุข 100% ก็มีน้ำหนักเหมือนกันนะคะ 🧮`,
+        `\n\nใช่ มันคือ ${pct.toFixed(1)}% ของงบ แต่เงินเข้าใหม่ได้ ฟีลดีๆ แบบนี้ไม่ได้เจอบ่อย ✨`,
+      ],
+      chaotic: [
+        `\n\n${pct.toFixed(1)}% ของงบใช้จ่าย? โอเค นี่คือการจัดสรรงบให้ความสุขแบบจริงจัง 🔥`,
+        `\n\nตัวเลข ${pct.toFixed(1)}% ดูแรง แต่ใจเราแรงกว่า ไปค่ะ 🚦`,
+      ],
+    };
+    return pick(high[mode]);
+  }
+
+  if (pct <= 5) {
+    return pick([
+      `\n\nแค่ ${pct.toFixed(1)}% ของเงินใช้จ่ายเอง งบแทบไม่รู้สึกตัวด้วยซ้ำ ✨`,
+      `\n\n${pct.toFixed(1)}% ของงบใช้จ่าย อันนี้เรียกว่าขยับเบาๆ ไม่ใช่ช้อปหนัก 💅`,
+      `\n\nตัวเลขคือ ${pct.toFixed(1)}% เท่านั้น ซื้อแล้วงบยังยิ้มอยู่ค่ะ`,
+    ]);
+  }
+
+  return pick([
+    `\n\nประมาณ ${pct.toFixed(1)}% ของเงินใช้จ่ายรอบนี้ ถือว่าอยู่โซนพอดี ซื้อได้ถ้าตั้งใจจริง 💖`,
+    `\n\n${pct.toFixed(1)}% ของงบใช้จ่าย ไม่เบาแต่ไม่แรง จัดเป็นความสุขที่ยังคุมได้`,
+    `\n\nตัวเลข ${pct.toFixed(1)}% ยังรับไหว เหลืองบให้ชีวิตหลังจากนี้อยู่ค่ะ 📊`,
+  ]);
+}
+
+function budgetAddon(mode: PersonalityMode, s: SpendableResult, locale: ContentLocale = 'en'): string {
+  if (locale === 'th') return budgetAddonTh(mode, s);
+
   // Guard against NaN/Infinity from edge-case computeSpendable results
   const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
 
@@ -203,7 +307,72 @@ const emojiMap: Record<PersonalityMode, string[]> = {
 // ── smart personalization addon ───────────────────────────
 // Picks the single most relevant real-user-data fact and weaves it in naturally.
 // This is what makes responses feel like actual AI — because it knows YOUR numbers.
-function smartAddon(mode: PersonalityMode, ctx: SmartJustificationContext): string {
+function smartAddonTh(mode: PersonalityMode, ctx: SmartJustificationContext): string {
+  const candidates: string[] = [];
+
+  if (ctx.savingsJarTotal && ctx.savingsJarTotal >= 10) {
+    const j = Math.round(ctx.savingsJarTotal);
+    candidates.push(...({
+      delulu: [`ในกระปุกมี $${j} จากของที่เคยข้ามมา นี่เหมือนตั้งกองทุนไว้เพื่อโมเมนต์นี้แล้ว 🫙`],
+      responsible: [`กระปุกออมมี $${j} จากการข้ามซื้อของก่อนหน้า ถ้าจะใช้บางส่วนกับของที่อยากได้จริงๆ ก็สมเหตุสมผลนะ ✅`],
+      chaotic: [`กระปุกมี $${j} นอนรอภารกิจอยู่ และภารกิจวันนี้ดูเหมือนจะชัดมาก 🫙🔥`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (ctx.daysSinceLastSplurge !== undefined && ctx.daysSinceLastSplurge >= 3) {
+    const d = ctx.daysSinceLastSplurge;
+    candidates.push(...({
+      delulu: [`ไม่ได้เปย์หนักมา ${d} วันแล้ว ถือว่าอดทนมาพอสมควร จักรวาลควรเห็นใจ ✨`],
+      responsible: [`ไม่ได้ซื้อหนักมา ${d} วัน วินัยดีมาก ถ้าจะให้รางวัลตัวเองแบบพอดีๆ ก็โอเค 💖`],
+      chaotic: [`${d} วันไม่มีช้อปหนัก? สถิติสวยแล้ว ปิดจ็อบได้ 🔥`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (ctx.treatBudgetRemaining && ctx.treatBudgetRemaining >= 5) {
+    const t = Math.round(ctx.treatBudgetRemaining);
+    candidates.push(...({
+      delulu: [`งบให้รางวัลตัวเองยังเหลือ $${t} เงินก้อนนี้เกิดมาเพื่อความสุขแบบนี้แหละ 🎀`],
+      responsible: [`งบให้รางวัลตัวเองเหลือ $${t} ถ้าใช้จากซองนี้ก็ตรงวัตถุประสงค์เลย 🎯`],
+      chaotic: [`งบ treat เหลือ $${t} แล้วจะปล่อยให้นิ่งเฉยได้ไง 💅`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (ctx.topCategory && ctx.topCategoryAmount && ctx.topCategoryAmount > 0) {
+    const cat = thCategoryLabel(ctx.topCategory);
+    const amt = Math.round(ctx.topCategoryAmount);
+    candidates.push(...({
+      delulu: [`รอบนี้หมวด ${cat} ขึ้นนำที่ $${amt} แล้ว แปลว่ารสนิยมชัดมากและเรารับทราบ 👑`],
+      responsible: [`หมวดที่ใช้เยอะสุดรอบนี้คือ ${cat} ที่ $${amt} เก็บไว้เป็นบริบทก่อนตัดสินใจก็ดี 📊`],
+      chaotic: [`${cat} นำอยู่ที่ $${amt} แล้ว ไปให้สุดทางฟีลก็ได้มั้ง 🔥`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (ctx.auraScore !== undefined && ctx.auraScore >= 400) {
+    const s = ctx.auraScore;
+    const vibe = s >= 800 ? 'ออร่าพุ่ง' : s >= 600 ? 'กำลังฟื้นตัวสวยๆ' : 'บาลานซ์อยู่';
+    candidates.push(...({
+      delulu: [`คะแนนออร่า ${s}/1000 ตอนนี้คือ${vibe} คนฟีลดีสมควรมีของดีๆ นะ ✨`],
+      responsible: [`ออร่า ${s}/1000 ถือว่า${vibe} ถ้าซื้อแบบมีแผนก็ยังรักษาทรงได้ ✅`],
+      chaotic: [`ออร่า ${s}/1000 คะแนนก็ช่วยเชียร์อยู่นะ จังหวะนี้มีน้ำหนัก 💸`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (ctx.weekTotal !== undefined && ctx.weekTotal >= 0 && ctx.weekTotal < 50) {
+    const w = Math.round(ctx.weekTotal);
+    candidates.push(...({
+      delulu: [`ทั้งสัปดาห์ใช้ไปแค่ $${w} เอง กระเป๋าตังค์ได้พักมาแล้ว ให้เขามีโมเมนต์บ้าง 💅`],
+      responsible: [`สัปดาห์นี้ใช้ไป $${w} ยังอยู่ในโซนคุมได้ มีพื้นที่ให้การซื้อที่ตั้งใจอยู่ค่ะ 📊`],
+      chaotic: [`วีคนี้เพิ่ง $${w}? ทางยังโล่งมาก ไปต่อได้แบบมีไฟ 🔥`],
+    } as Record<PersonalityMode, string[]>)[mode]);
+  }
+
+  if (candidates.length === 0) return '';
+  return `\n\nอีกอย่างนะ: ${pick(candidates)}`;
+}
+
+function smartAddon(mode: PersonalityMode, ctx: SmartJustificationContext, locale: ContentLocale = 'en'): string {
+  if (locale === 'th') return smartAddonTh(mode, ctx);
+
   const candidates: string[] = [];
 
   // savings jar — user has skipped purchases to save money
@@ -328,11 +497,12 @@ function smartAddon(mode: PersonalityMode, ctx: SmartJustificationContext): stri
 
 export function generateJustification(req: JustificationRequest): JustificationResponse {
   const { itemName, price, personality, spendable, smartCtx } = req;
+  const locale = contentLocale(req.locale);
 
-  let message = pick(baseTpls[personality])(itemName, price);
+  let message = pick(locale === 'th' ? thBaseTpls[personality] : baseTpls[personality])(itemName, price);
 
-  if (spendable) message += budgetAddon(personality, spendable);
-  if (smartCtx) message += smartAddon(personality, smartCtx);
+  if (spendable) message += budgetAddon(personality, spendable, locale);
+  if (smartCtx) message += smartAddon(personality, smartCtx, locale);
 
   return {
     message,
@@ -370,6 +540,25 @@ const GIRL_MATH_MOMENTS = [
   "if you manifest it hard enough, the universe will cover the cost somehow",
 ];
 
-export function getGirlMathMoment(): string {
-  return GIRL_MATH_MOMENTS[Math.floor(Math.random() * GIRL_MATH_MOMENTS.length)];
+const TH_GIRL_MATH_MOMENTS = [
+  'คืนของแล้วได้เงินคืน เท่ากับมีเงินฟรีสำหรับของชิ้นถัดไป',
+  'ซื้อรุ่นดีตั้งแต่แรก ไม่ต้องซื้อซ้ำบ่อยๆ สุดท้ายคือประหยัดกว่า',
+  'ถ้าหารราคาตามจำนวนวันที่จะใช้ มันแทบจะฟรี',
+  'ของลดราคาแปลว่าถ้าไม่ซื้อ เรากำลังพลาดเงินส่วนต่าง',
+  'ชุดอาจแพง แต่ความมั่นใจที่ได้กลับมาประเมินค่าไม่ได้',
+  'ซื้อสองสีของรุ่นเดียวกัน ยังนับเป็นของประเภทเดียวกันอยู่',
+  'จ่ายด้วยเงินสดแล้วเหมือนไม่ได้ใช้เงิน เพราะเงินออกจากบัญชีไปตั้งนานแล้ว',
+  'ถ้าคิดเกิน 10 นาที มันไม่ใช่อิมพัลส์แล้ว มันคือการตัดสินใจ',
+  'ดูแลตัวเองคือการลงทุนกับสุขภาพใจ และสุขภาพใจแพงกว่านี้เยอะ',
+  'ทั้งสัปดาห์ไม่ได้สั่งอาหารข้างนอก เงินที่ประหยัดได้ครอบคลุมชิ้นนี้พอดี',
+  'ค่าส่งไม่นับ ถ้าเพิ่มอีกชิ้นแล้วได้ส่งฟรี',
+  'ซื้อเป็นเซ็ตถูกกว่าต่อชิ้น แปลว่าใช้เงินมากขึ้นเพื่อประหยัดมากขึ้น',
+  'ถ้าของชิ้นนั้นทำให้ใจฟู มันก็คืนทุนทางอารมณ์แล้ว',
+  'ให้รางวัลตัวเองหลังวันที่เหนื่อย ยังถูกกว่าค่าฮีลใจหลายอย่าง',
+  'อยากได้มานานเป็นปี อันนี้ไม่ใช่ซื้อหุนหันแล้ว เรียกว่าศึกษามานาน',
+];
+
+export function getGirlMathMoment(locale?: string): string {
+  const moments = contentLocale(locale) === 'th' ? TH_GIRL_MATH_MOMENTS : GIRL_MATH_MOMENTS;
+  return moments[Math.floor(Math.random() * moments.length)];
 }

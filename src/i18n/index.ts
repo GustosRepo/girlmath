@@ -35,7 +35,7 @@ i18n.use(initReactI18next).init({
 // Export this promise so App can wait for it if needed
 export const i18nReady = loadLanguage().then((savedLang) => {
   if (savedLang && savedLang !== i18n.language) {
-    return i18n.changeLanguage(savedLang);
+    return i18n.changeLanguage(savedLang).then(() => undefined);
   }
   return Promise.resolve();
 });

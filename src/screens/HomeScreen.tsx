@@ -70,7 +70,7 @@ function isVagueName(name: string): boolean {
 }
 
 export default function HomeScreen() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { showPaywall, isPremium } = usePaywall();
 
   // ── core state ────────────────────────────────────────
@@ -245,6 +245,7 @@ export default function HomeScreen() {
           personality,
           spendable,
           smartCtx,
+          locale: i18n.language,
         });
         // capture for the "log this too" button before inputs clear
         pendingLogRef.current = { itemName: itemName.trim(), price: parsedPrice };

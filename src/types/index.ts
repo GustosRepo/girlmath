@@ -54,6 +54,7 @@ export interface JustificationRequest {
   personality: PersonalityMode;
   spendable?: SpendableResult;
   smartCtx?: SmartJustificationContext;
+  locale?: string;
 }
 
 export interface JustificationResponse {

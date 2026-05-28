@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
@@ -36,12 +36,12 @@ function auraLevel(score: number): { emoji: string; tKey: string; color: string 
 
 export default function ToolsScreen() {
   const navigation = useNavigation<any>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const auraShotRef = useRef<ViewShot>(null);
   const momentShotRef = useRef<ViewShot>(null);
 
   const [auraScore, setAuraScore] = useState<AuraScore>({ score: 500, lastUpdated: '' });
-  const [moment, setMoment] = useState(getGirlMathMoment());
+  const [moment, setMoment] = useState(() => getGirlMathMoment(i18n.language));
   const [jarTotal, setJarTotal] = useState(0);
   const [treatPct, setTreatPct] = useState(0);
   const [cpuCount, setCpuCount] = useState(0);
@@ -66,11 +66,15 @@ export default function ToolsScreen() {
     }, []),
   );
 
+  useEffect(() => {
+    setMoment(getGirlMathMoment(i18n.language));
+  }, [i18n.language]);
+
   const aura = auraLevel(auraScore.score);
 
   const handleNewMoment = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setMoment(getGirlMathMoment());
+    setMoment(getGirlMathMoment(i18n.language));
   };
 
   const handleShareAura = async () => {

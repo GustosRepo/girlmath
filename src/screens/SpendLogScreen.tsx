@@ -38,7 +38,7 @@ const SPEND_REACTIONS: Record<PersonalityMode, (cat: string, item: string, price
 
 export default function SpendLogScreen() {
   const { showPaywall } = usePaywall();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [selectedCategory, setSelectedCategory] = useState<SpendCategory>('misc');
   const [amount, setAmount] = useState('');
@@ -104,6 +104,7 @@ export default function SpendLogScreen() {
         itemName: displayItem,
         price: parsedAmount,
         personality,
+        locale: i18n.language,
       });
       setResponse(result);
 
@@ -132,9 +133,15 @@ export default function SpendLogScreen() {
         if (catLimit && catLimit.limit > 0) {
           const catTotal = updated.byCategory?.[selectedCategory] ?? 0;
           if (catTotal >= catLimit.limit) {
-            setBudgetWarning(`⚠️ you've hit your ${catInfo.label} budget of $${catLimit.limit} this period!`);
+            setBudgetWarning(t('spend_log.budget_hit', {
+              category: t(`categories.${selectedCategory}` as any),
+              amount: catLimit.limit,
+            }));
           } else if (catTotal >= catLimit.limit * 0.8) {
-            setBudgetWarning(`💡 ${Math.round((catLimit.limit - catTotal) * 100) / 100} left in ${catInfo.label} budget`);
+            setBudgetWarning(t('spend_log.budget_left', {
+              amount: Math.round((catLimit.limit - catTotal) * 100) / 100,
+              category: t(`categories.${selectedCategory}` as any),
+            }));
           }
         }
       }

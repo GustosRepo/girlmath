@@ -465,6 +465,8 @@ const en = {
     item_placeholder: 'item name (optional)',
     logging: '✨ logging...',
     log_btn: '📝 log this spend',
+    budget_hit: '⚠️ you\'ve hit your {{category}} budget of ${{amount}} this period!',
+    budget_left: '💡 ${{amount}} left in {{category}} budget',
     footer: 'every dollar logged is a dollar owned 💅',
   },
 
