@@ -8,9 +8,13 @@ import {
 
 // ── helpers ────────────────────────────────────────────────
 const pick = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-type ContentLocale = 'en' | 'th';
-const contentLocale = (locale?: string): ContentLocale =>
-  locale?.toLowerCase().startsWith('th') ? 'th' : 'en';
+type ContentLocale = 'en' | 'es' | 'th';
+const contentLocale = (locale?: string): ContentLocale => {
+  const lang = locale?.toLowerCase();
+  if (lang?.startsWith('th')) return 'th';
+  if (lang?.startsWith('es')) return 'es';
+  return 'en';
+};
 
 const thCategoryLabel = (cat: string): string => ({
   shopping: 'ช้อปปิ้ง',
@@ -22,6 +26,18 @@ const thCategoryLabel = (cat: string): string => ({
   fun: 'ความสนุก',
   home: 'ของเข้าบ้าน',
   misc: 'อื่นๆ',
+}[cat] ?? cat);
+
+const esCategoryLabel = (cat: string): string => ({
+  shopping: 'compras',
+  food: 'comida',
+  beauty: 'belleza',
+  shoes: 'zapatos',
+  health: 'salud',
+  tech: 'tecnología',
+  fun: 'diversión',
+  home: 'hogar',
+  misc: 'varios',
 }[cat] ?? cat);
 
 // ── base templates (item, price) ───────────────────────────
@@ -142,6 +158,39 @@ const thBaseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string
   ],
 };
 
+const esBaseTpls: Record<PersonalityMode, Array<(i: string, p: number) => string>> = {
+  delulu: [
+    (i, p) => `amiga, $${p} por ${i} no es un gasto: es una inversión en tu versión más feliz 💅 si lo usas varias veces, el costo por uso queda chiquitito`,
+    (i, p) => `${i} apareció en tu camino por algo. $${p} es básicamente la cuota de manifestar una vida más bonita ✨`,
+    (i, p) => `si no compras ${i}, vas a pensar en eso toda la semana. Esa paz mental vale más que $${p}, la verdad`,
+    (i, p) => `${i} por $${p}? Si lo divides entre todos los días que lo vas a amar, prácticamente no cuenta 🧮`,
+    (i, p) => `$${p} por ${i} también compra cumplidos, confianza y cero arrepentimiento. Eso no cabe en una hoja de cálculo 👑`,
+    (i, p) => `${i} no está caro, solo está esperando a la dueña correcta. Spoiler: eres tú. $${p} y se cierra el caso 💖`,
+    (i, p) => `hoy son $${p}, mañana es felicidad cada vez que uses ${i}. Matemáticas emocionales, pero matemáticas al fin 📈`,
+    (i, p) => `si ${i} se agota, el arrepentimiento te va a salir más caro que $${p}. Comprar tranquilidad también es válido`,
+  ],
+  responsible: [
+    (i, p) => `${i} por $${p}: hagamos revisión rápida. ¿Pagos cubiertos, comida cubierta y todavía cabe en tu presupuesto? Entonces puede ser un gusto sin culpa 💖`,
+    (i, p) => `entiendo que quieras ${i}. $${p} está bien si sale de tu dinero para gustos, no del dinero de pagos importantes 📊`,
+    (i, p) => `${i} a $${p}: si mañana sigues queriéndolo igual, eso ya suena a compra pensada, no impulso ✅`,
+    (i, p) => `bien por revisar antes de comprar. Si ${i} por $${p} es el mejor precio que encontraste, se vale considerarlo`,
+    (i, p) => `${i} por $${p}: si reemplaza algo que ya usas o te hace la vida más fácil, eso cuenta como upgrade con sentido`,
+    (i, p) => `$${p} por ${i} no tiene que dar culpa si no mueve tus prioridades. Solo ponle límite al resto de la semana y disfrútalo`,
+    (i, p) => `si vas a usar ${i} seguido, $${p} se vuelve más razonable cada vez. Si es puro antojo de momento, quizá duerme la decisión`,
+    (i, p) => `me gusta ${i} para ti. $${p} puede ser un gusto válido; solo que un gusto no se convierta en carrito completo 🎯`,
+  ],
+  chaotic: [
+    (i, p) => `$${p} por ${i}? Mentalmente ya está en el carrito, no sé qué estamos debatiendo 🛒💅`,
+    (i, p) => `mi cerebro dijo "piénsalo", pero mi corazón ya estaba pagando. ${i}, $${p}, siguiente pregunta 🔥`,
+    (i, p) => `${i} a $${p} es parte importante de la trama de esta temporada. No arruinemos el guion 🎬`,
+    (i, p) => `razones para comprar ${i}: uno, lo quieres. dos, cuesta $${p}. tres, has sobrevivido demasiado esta semana. Fin 💸`,
+    (i, p) => `tu cuenta puede tener preguntas, pero hoy no estamos en horario de atención. ${i} por $${p} y seguimos 😈`,
+    (i, p) => `${i} por $${p} no es impulso, es rapidez ejecutiva con buena intuición 💳`,
+    (i, p) => `hay gente que se regula tomando agua. Tú te regulas con ${i} por $${p}. Cada quien sus métodos 🫠`,
+    (i, p) => `pro: ${i}\ncontra: $${p}\nconclusión: ganó el pro porque se veía más bonito 💅`,
+  ],
+};
+
 // ── budget-aware add-ons ───────────────────────────────────
 function budgetAddonTh(mode: PersonalityMode, s: SpendableResult): string {
   const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
@@ -199,6 +248,59 @@ function budgetAddonTh(mode: PersonalityMode, s: SpendableResult): string {
 
 function budgetAddon(mode: PersonalityMode, s: SpendableResult, locale: ContentLocale = 'en'): string {
   if (locale === 'th') return budgetAddonTh(mode, s);
+  if (locale === 'es') {
+    const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
+
+    if (s.perPeriod <= 0) {
+      const negatives: Record<PersonalityMode, string[]> = {
+        responsible: [
+          `\n\n⚠️ aviso con cariño: tu disponible está en negativo este período. Mejor espera al siguiente pago para comprar sin estrés`,
+          `\n\n⚠️ los números dicen que este período ya está apretado. Guárdalo en wishlist y vuelve cuando entre dinero 💕`,
+        ],
+        delulu: [
+          `\n\nel presupuesto dice que no, pero el corazón dice que sí, y el corazón no abre hojas de cálculo ✨`,
+          `\n\nsí, el disponible está negativo, pero la felicidad de usarlo sería bastante positiva 🔮`,
+        ],
+        chaotic: [
+          `\n\nel presupuesto está en negativo, pero las ganas están al 100. Energías encontradas 🔥`,
+          `\n\nla cuenta pidió pausa, pero la trama pidió continuación 💸`,
+        ],
+      };
+      return pick(negatives[mode]);
+    }
+
+    if (pct > 15) {
+      const high: Record<PersonalityMode, string[]> = {
+        responsible: [
+          `\n\n📊 esto es ${pct.toFixed(1)}% de tu disponible del período. Es una compra grande; dormirlo una noche o buscar descuento sería buena idea`,
+          `\n\n📊 ${pct.toFixed(1)}% de tu disponible. Se puede si de verdad lo quieres, pero el resto del período tendría que ir más controlado`,
+        ],
+        delulu: [
+          `\n\n${pct.toFixed(1)}% suena mucho, pero 100% de felicidad también cuenta en la ecuación 🧮`,
+          `\n\nsí, es ${pct.toFixed(1)}% del disponible, pero el dinero vuelve y esta oportunidad quizá no ✨`,
+        ],
+        chaotic: [
+          `\n\n${pct.toFixed(1)}% del disponible yendo directo a la felicidad. Eso se llama asignación de recursos 🔥`,
+          `\n\n${pct.toFixed(1)}% se ve intenso, pero tus ganas vienen más intensas. Luz verde emocional 🚦`,
+        ],
+      };
+      return pick(high[mode]);
+    }
+
+    if (pct <= 5) {
+      return pick([
+        `\n\nes solo ${pct.toFixed(1)}% de tu disponible. Tu presupuesto casi ni se entera ✨`,
+        `\n\n${pct.toFixed(1)}% del disponible: eso es un gustito, no una crisis 💅`,
+        `\n\ncon ${pct.toFixed(1)}%, el presupuesto sigue respirando tranquilo`,
+      ]);
+    }
+
+    return pick([
+      `\n\nes ${pct.toFixed(1)}% de tu disponible del período. Está en zona razonable si es una compra intencional 💖`,
+      `\n\n${pct.toFixed(1)}% del disponible: no es nada, pero tampoco rompe el plan. Se puede manejar`,
+      `\n\n${pct.toFixed(1)}% todavía deja espacio para vivir el resto del período con calma 📊`,
+    ]);
+  }
 
   // Guard against NaN/Infinity from edge-case computeSpendable results
   const pct = typeof s.purchasePct === 'number' && isFinite(s.purchasePct) ? s.purchasePct : 999;
@@ -372,6 +474,68 @@ function smartAddonTh(mode: PersonalityMode, ctx: SmartJustificationContext): st
 
 function smartAddon(mode: PersonalityMode, ctx: SmartJustificationContext, locale: ContentLocale = 'en'): string {
   if (locale === 'th') return smartAddonTh(mode, ctx);
+  if (locale === 'es') {
+    const candidates: string[] = [];
+
+    if (ctx.savingsJarTotal && ctx.savingsJarTotal >= 10) {
+      const j = Math.round(ctx.savingsJarTotal);
+      candidates.push(...({
+        delulu: [`tu alcancía tiene $${j} de compras que evitaste. Eso suena como fondo oficial para este momento 🫙`],
+        responsible: [`tienes $${j} en la alcancía por compras evitadas. Usar una parte en algo que sí quieres puede tener sentido ✅`],
+        chaotic: [`hay $${j} en la alcancía esperando misión, y esta misión se ve clarísima 🫙🔥`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (ctx.daysSinceLastSplurge !== undefined && ctx.daysSinceLastSplurge >= 3) {
+      const d = ctx.daysSinceLastSplurge;
+      candidates.push(...({
+        delulu: [`llevas ${d} días sin un gasto fuerte. Esa disciplina merece reconocimiento ✨`],
+        responsible: [`${d} días sin un derroche grande: buen autocontrol. Un gusto medido puede entrar 💖`],
+        chaotic: [`${d} días sin caos de compras. La racha ya cumplió su propósito 🔥`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (ctx.treatBudgetRemaining && ctx.treatBudgetRemaining >= 5) {
+      const t = Math.round(ctx.treatBudgetRemaining);
+      candidates.push(...({
+        delulu: [`te quedan $${t} en tu presupuesto de gustos. Ese dinero nació para momentos así 🎀`],
+        responsible: [`quedan $${t} en tu presupuesto de gustos; si sale de ahí, está justo para eso 🎯`],
+        chaotic: [`$${t} de dinero para gustos sin usar. Eso no puede quedarse aburrido 💅`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (ctx.topCategory && ctx.topCategoryAmount && ctx.topCategoryAmount > 0) {
+      const cat = esCategoryLabel(ctx.topCategory);
+      const amt = Math.round(ctx.topCategoryAmount);
+      candidates.push(...({
+        delulu: [`tu categoría más fuerte este período es ${cat} con $${amt}. Tienes un estilo claro y se respeta 👑`],
+        responsible: [`tu categoría principal este período es ${cat} con $${amt}. Vale la pena tenerlo presente antes de decidir 📊`],
+        chaotic: [`${cat} va ganando con $${amt}. La consistencia también es una personalidad 🔥`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (ctx.auraScore !== undefined && ctx.auraScore >= 400) {
+      const s = ctx.auraScore;
+      const vibe = s >= 800 ? 'brillando' : s >= 600 ? 'recuperándose bonito' : 'en equilibrio';
+      candidates.push(...({
+        delulu: [`tu aura está en ${s}/1000, o sea ${vibe}. La gente con buena energía merece cosas lindas ✨`],
+        responsible: [`aura ${s}/1000: vas ${vibe}. Una compra planeada puede mantener ese ritmo ✅`],
+        chaotic: [`${s}/1000 de aura. El marcador está apoyando la compra, honestamente 💸`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (ctx.weekTotal !== undefined && ctx.weekTotal >= 0 && ctx.weekTotal < 50) {
+      const w = Math.round(ctx.weekTotal);
+      candidates.push(...({
+        delulu: [`solo $${w} gastados esta semana. Tu cartera descansó; puede tener un momentito 💅`],
+        responsible: [`esta semana llevas $${w}. Vas bastante controlada, así que hay margen para una compra intencional 📊`],
+        chaotic: [`¿solo $${w} esta semana? Hay pista libre para avanzar 🔥`],
+      } as Record<PersonalityMode, string[]>)[mode]);
+    }
+
+    if (candidates.length === 0) return '';
+    return `\n\nademás: ${pick(candidates)}`;
+  }
 
   const candidates: string[] = [];
 
@@ -499,7 +663,8 @@ export function generateJustification(req: JustificationRequest): JustificationR
   const { itemName, price, personality, spendable, smartCtx } = req;
   const locale = contentLocale(req.locale);
 
-  let message = pick(locale === 'th' ? thBaseTpls[personality] : baseTpls[personality])(itemName, price);
+  const templates = locale === 'th' ? thBaseTpls : locale === 'es' ? esBaseTpls : baseTpls;
+  let message = pick(templates[personality])(itemName, price);
 
   if (spendable) message += budgetAddon(personality, spendable, locale);
   if (smartCtx) message += smartAddon(personality, smartCtx, locale);
@@ -558,7 +723,30 @@ const TH_GIRL_MATH_MOMENTS = [
   'อยากได้มานานเป็นปี อันนี้ไม่ใช่ซื้อหุนหันแล้ว เรียกว่าศึกษามานาน',
 ];
 
+const ES_GIRL_MATH_MOMENTS = [
+  'si devuelves algo y te regresan dinero, ese dinero se siente gratis para la siguiente compra',
+  'comprar la versión buena desde el principio puede evitar reemplazos, así que a largo plazo ahorra',
+  'si divides el precio entre todos los días que lo vas a usar, casi no cuenta',
+  'si está en oferta, no comprarlo se siente como perder el descuento',
+  'el outfit puede ser caro, pero la confianza que da no tiene precio',
+  'comprar el mismo producto en dos colores cuenta como una sola categoría mental',
+  'si pagas en efectivo, duele menos porque el dinero ya salió de la cuenta',
+  'si lo pensaste más de 10 minutos, ya no es impulso, es investigación',
+  'gastar en autocuidado es invertir en tu salud mental',
+  'si no pediste comida toda la semana, lo que ahorraste puede cubrir esto',
+  'el envío no cuenta si agregas algo más y se vuelve gratis',
+  'comprar el paquete sale más barato por pieza, así que gastas más para ahorrar más',
+  'si te da alegría cada vez que lo ves, ya está pagando dividendos emocionales',
+  'darte un gusto después de un día pesado puede salir más barato que ignorar el estrés',
+  'si lo has querido por un año, no es impulso; es una compra con historial',
+];
+
 export function getGirlMathMoment(locale?: string): string {
-  const moments = contentLocale(locale) === 'th' ? TH_GIRL_MATH_MOMENTS : GIRL_MATH_MOMENTS;
+  const currentLocale = contentLocale(locale);
+  const moments = currentLocale === 'th'
+    ? TH_GIRL_MATH_MOMENTS
+    : currentLocale === 'es'
+      ? ES_GIRL_MATH_MOMENTS
+      : GIRL_MATH_MOMENTS;
   return moments[Math.floor(Math.random() * moments.length)];
 }
