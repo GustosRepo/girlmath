@@ -7,24 +7,27 @@ import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { usePaywall } from '../context/PaywallContext';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
 import { COLORS } from '../utils/theme';
-import { loadAuraScore, updateAuraScore, loadSavingsJar, loadTreatBudget, loadCostPerUseItems, loadSubscriptions } from '../utils/storage';
+import { loadAuraScore, loadSavingsJar, loadTreatBudget, loadCostPerUseItems, loadSubscriptions } from '../utils/storage';
 import { fmt$ } from '../utils/finance';
 import { getGirlMathMoment } from '../utils/girlMathEngine';
 import { AuraScore } from '../types';
 
 const TOOLS = [
-  { key: 'Insights',          emoji: '📊', tKey: 'insights' },
-  { key: 'CanIAffordIt',     emoji: '🤔', tKey: 'afford' },
-  { key: 'CostPerUse',       emoji: '📈', tKey: 'cpu' },
-  { key: 'TreatYourself',    emoji: '🎀', tKey: 'treat' },
-  { key: 'SubscriptionAudit',emoji: '💳', tKey: 'subs' },
-  { key: 'SavingsJar',       emoji: '🫙', tKey: 'jar' },
-  { key: 'SavingsGoals',     emoji: '🎯', tKey: 'goals' },
+  { key: 'Insights', emoji: '📊', tKey: 'insights' },
+  { key: 'CanIAffordIt', emoji: '🤔', tKey: 'afford' },
+  { key: 'CostPerUse', emoji: '📈', tKey: 'cpu' },
+  { key: 'TreatYourself', emoji: '🎀', tKey: 'treat' },
+  { key: 'SubscriptionAudit', emoji: '💳', tKey: 'subs' },
+  { key: 'SavingsJar', emoji: '🫙', tKey: 'jar' },
+  { key: 'SavingsGoals', emoji: '🎯', tKey: 'goals' },
 ];
+
+const PREMIUM_TOOL_KEYS = new Set(['Insights', 'SubscriptionAudit', 'SavingsGoals']);
 
 function auraLevel(score: number): { emoji: string; tKey: string; color: string } {
   if (score >= 800) return { emoji: '✨', tKey: 'glowing', color: '#22C55E' };
@@ -37,6 +40,7 @@ function auraLevel(score: number): { emoji: string; tKey: string; color: string 
 export default function ToolsScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
+  const { isPremium, showPaywall } = usePaywall();
   const auraShotRef = useRef<ViewShot>(null);
   const momentShotRef = useRef<ViewShot>(null);
 
@@ -58,10 +62,10 @@ export default function ToolsScreen() {
           loadSubscriptions(),
         ]);
         setAuraScore(score);
-        setJarTotal(jar.reduce((s, e) => s + e.price, 0));
+        setJarTotal(jar.reduce((sum, entry) => sum + entry.price, 0));
         setTreatPct(treat.monthlyLimit > 0 ? treat.spent / treat.monthlyLimit : 0);
         setCpuCount(cpu.length);
-        setSubTotal(subs.reduce((s, sub) => s + sub.monthlyCost, 0));
+        setSubTotal(subs.reduce((sum, sub) => sum + sub.monthlyCost, 0));
       })();
     }, []),
   );
@@ -113,7 +117,6 @@ export default function ToolsScreen() {
           <Text style={styles.title}>{t('tools.title')}</Text>
           <Text style={styles.subtitle}>{t('tools.subtitle')}</Text>
 
-          {/* Aura score */}
           <ViewShot ref={auraShotRef} options={{ format: 'png', quality: 1 }}>
             <GradientCard>
               <Text style={styles.shotBrand}>💖 GirlMath</Text>
@@ -128,10 +131,15 @@ export default function ToolsScreen() {
                 </View>
               </View>
               <View style={styles.auraBar}>
-                <View style={[styles.auraFill, {
-                  width: `${(auraScore.score / 1000) * 100}%` as any,
-                  backgroundColor: aura.color,
-                }]} />
+                <View
+                  style={[
+                    styles.auraFill,
+                    {
+                      width: `${(auraScore.score / 1000) * 100}%` as any,
+                      backgroundColor: aura.color,
+                    },
+                  ]}
+                />
               </View>
               <Text style={styles.auraHint}>{t('tools.aura_hint')}</Text>
               <Text style={styles.shotWatermark}>{t('tools.watermark')}</Text>
@@ -141,7 +149,6 @@ export default function ToolsScreen() {
             <Text style={styles.auraShareText}>{t('tools.share_aura')}</Text>
           </TouchableOpacity>
 
-          {/* Girl math moment */}
           <ViewShot ref={momentShotRef} options={{ format: 'png', quality: 1 }}>
             <GradientCard>
               <Text style={styles.shotBrand}>💖 GirlMath</Text>
@@ -159,25 +166,35 @@ export default function ToolsScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Tool cards */}
           <Text style={styles.toolsHeader}>{t('tools.tools_header')}</Text>
-          {TOOLS.map(tool => {
+          {TOOLS.map((tool) => {
             const badge = badgeFor(tool.key);
+            const isLocked = PREMIUM_TOOL_KEYS.has(tool.key) && !isPremium;
+
             return (
               <TouchableOpacity
                 key={tool.key}
                 activeOpacity={0.8}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (isLocked) {
+                    showPaywall();
+                    return;
+                  }
                   navigation.navigate(tool.key);
                 }}
               >
                 <GradientCard>
-                  <View style={styles.toolRow}>
+                  <View style={[styles.toolRow, isLocked && styles.toolRowLocked]}>
                     <Text style={styles.toolEmoji}>{tool.emoji}</Text>
                     <View style={styles.toolInfo}>
                       <View style={styles.toolTitleRow}>
                         <Text style={styles.toolLabel}>{t(`tools.tool_${tool.tKey}_label` as any)}</Text>
+                        {isLocked && (
+                          <View style={[styles.toolBadge, styles.toolBadgeLocked]}>
+                            <Text style={styles.toolBadgeLockedText}>{t('tools.premium_badge')}</Text>
+                          </View>
+                        )}
                         {badge !== '' && (
                           <View style={styles.toolBadge}>
                             <Text style={styles.toolBadgeText}>{badge}</Text>
@@ -185,8 +202,20 @@ export default function ToolsScreen() {
                         )}
                       </View>
                       <Text style={styles.toolDesc}>{t(`tools.tool_${tool.tKey}_desc` as any)}</Text>
+                      {isLocked && (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                            showPaywall();
+                          }}
+                          style={styles.toolUpgradeBtn}
+                        >
+                          <Text style={styles.toolUpgradeText}>{t('tools.premium_cta')}</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
-                    <Text style={styles.toolArrow}>›</Text>
+                    <Text style={styles.toolArrow}>{isLocked ? '🔒' : '›'}</Text>
                   </View>
                 </GradientCard>
               </TouchableOpacity>
@@ -214,7 +243,6 @@ const styles = StyleSheet.create({
   auraBar: { height: 8, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
   auraFill: { height: '100%', borderRadius: 4 },
   auraHint: { fontSize: 12, color: COLORS.textMuted, fontStyle: 'italic' },
-  auraFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardShareBtn: { alignSelf: 'flex-end', marginTop: -4, marginBottom: 4, paddingVertical: 4, paddingHorizontal: 8 },
   shotBrand: { fontSize: 18, fontWeight: '900', color: COLORS.textSecondary, marginBottom: 10, letterSpacing: 0.5 },
   shotWatermark: { fontSize: 11, color: COLORS.textMuted, fontStyle: 'italic', textAlign: 'center', marginTop: 12 },
@@ -228,12 +256,17 @@ const styles = StyleSheet.create({
   momentShareText: { fontSize: 14, fontWeight: '800', color: COLORS.textSecondary },
   toolsHeader: { fontSize: 18, fontWeight: '900', color: COLORS.white, marginTop: 4, marginBottom: 2, textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   toolRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toolRowLocked: { opacity: 0.9 },
   toolEmoji: { fontSize: 28, width: 36 },
   toolInfo: { flex: 1 },
   toolTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   toolLabel: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
   toolBadge: { backgroundColor: 'rgba(255,105,180,0.2)', borderRadius: 10, paddingVertical: 2, paddingHorizontal: 8 },
   toolBadgeText: { fontSize: 11, fontWeight: '800', color: COLORS.pinkHot },
+  toolBadgeLocked: { backgroundColor: 'rgba(124,58,237,0.14)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.24)' },
+  toolBadgeLockedText: { fontSize: 11, fontWeight: '900', color: '#7C3AED' },
   toolDesc: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  toolUpgradeBtn: { alignSelf: 'flex-start', marginTop: 8, backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: 'rgba(124,58,237,0.22)' },
+  toolUpgradeText: { fontSize: 12, fontWeight: '800', color: '#7C3AED' },
   toolArrow: { fontSize: 24, color: COLORS.textMuted, fontWeight: '800' },
 });

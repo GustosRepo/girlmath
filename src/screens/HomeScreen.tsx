@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { BannerAd, BannerAdSize, AdUnitIds, AdsDebug, useInterstitialAd, useRewardedAd } from '../utils/ads';
+import { BannerAd, BannerAdSize, AdUnitIds, AdsDebug, useRewardedAd } from '../utils/ads';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -96,7 +96,6 @@ export default function HomeScreen() {
   const [justifyCount, setJustifyCount] = useState(0);
   const [rewardedCredits, setRewardedCredits] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES + rewardedCredits - justifyCount);
-  const { show: showInterstitial, status: interstitialStatus } = useInterstitialAd();
   const { show: showRewardedAd, status: rewardedStatus } = useRewardedAd();
   const [bannerStatus, setBannerStatus] = useState('idle');
   const [isUnlockingJustify, setIsUnlockingJustify] = useState(false);
@@ -245,14 +244,10 @@ export default function HomeScreen() {
   const handleJustify = () => {
     if (!itemName.trim() || parsedPrice <= 0) return;
 
-    // Hard gate — if limit already hit, show paywall
-    if (justifyCount >= FREE_JUSTIFIES + rewardedCredits) {
+    // Free users unlock more justifies with rewarded ads; premium stays unlimited.
+    if (!isPremium && justifyCount >= FREE_JUSTIFIES + rewardedCredits) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      if (!isPremium) {
-        void handleWatchAdForJustify();
-      } else {
-        showPaywall();
-      }
+      void handleWatchAdForJustify();
       return;
     }
 
@@ -302,20 +297,8 @@ export default function HomeScreen() {
         };
         await addHistory(entry);
 
-        // Justify counter → nudge paywall after FREE_JUSTIFIES uses
         const count = await incrementJustifyCount();
         setJustifyCount(count);
-        if (count >= FREE_JUSTIFIES) {
-          if (!isPremium && count === FREE_JUSTIFIES) {
-            setTimeout(() => {
-              let didShowInterstitial = false;
-              try {
-                didShowInterstitial = showInterstitial();
-              } catch {}
-              setTimeout(() => showPaywall(), didShowInterstitial ? 2600 : 0);
-            }, 1500);
-          }
-        }
 
         // Lifetime counter → ask for review after 5th total justify
         try {
@@ -508,16 +491,25 @@ export default function HomeScreen() {
           </Text>
 
           {!isPremium && justifiesLeft === 0 && (
-            <TouchableOpacity
-              onPress={() => void handleWatchAdForJustify()}
-              activeOpacity={0.8}
-              disabled={isUnlockingJustify}
-              style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
-            >
-              <Text style={styles.rewardButtonText}>
-                {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.limitActions}>
+              <TouchableOpacity
+                onPress={() => void handleWatchAdForJustify()}
+                activeOpacity={0.8}
+                disabled={isUnlockingJustify}
+                style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
+              >
+                <Text style={styles.rewardButtonText}>
+                  {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => showPaywall()}
+                activeOpacity={0.8}
+                style={styles.upgradePromptBtn}
+              >
+                <Text style={styles.upgradePromptText}>{t('home.upgrade_cta')}</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* ── Thinking cat while loading ──────────── */}
@@ -653,11 +645,9 @@ export default function HomeScreen() {
               <Text style={styles.debugLine}>native module: {AdsDebug.hasNativeModule ? 'ready' : 'missing'}</Text>
               <Text style={styles.debugLine}>test ids: {AdsDebug.isUsingTestIds ? 'on' : 'off'}</Text>
               <Text style={styles.debugLine}>banner: {isPremium ? 'hidden for premium' : bannerStatus}</Text>
-              <Text style={styles.debugLine}>interstitial: {interstitialStatus}</Text>
               <Text style={styles.debugLine}>rewarded: {rewardedStatus}</Text>
               <Text style={styles.debugLine}>rewarded credits: {rewardedCredits}</Text>
               <Text style={styles.debugLine}>banner unit: {AdUnitIds.banner}</Text>
-              <Text style={styles.debugLine}>interstitial unit: {AdUnitIds.interstitial}</Text>
               <Text style={styles.debugLine}>rewarded unit: {AdUnitIds.rewarded}</Text>
             </View>
           )}
@@ -752,6 +742,11 @@ const styles = StyleSheet.create({
     marginTop: -4,
     marginBottom: 8,
   },
+  limitActions: {
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
   rewardButton: {
     alignSelf: 'center',
     marginBottom: 12,
@@ -767,6 +762,21 @@ const styles = StyleSheet.create({
   },
   rewardButtonText: {
     color: '#7C3AED',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  upgradePromptBtn: {
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+  },
+  upgradePromptText: {
+    color: COLORS.white,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
