@@ -72,7 +72,9 @@ export default function App() {
     }, 5000);
 
     try { setupAndroidChannel(); } catch {}
-    try { initializeAds(); } catch {}    // 📢 AdMob init (may fail in Expo Go)
+    void initializeAds().catch((error) => {
+      console.warn('[Ads] initializeAds failed', error);
+    });
     (async () => {
       // Wait for i18n to load saved language
       await i18nReady;

@@ -11,7 +11,7 @@ import {
   Image,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { BannerAd, BannerAdSize, AdUnitIds, useInterstitialAd } from '../utils/ads';
+import { BannerAd, BannerAdSize, AdUnitIds, AdsDebug, useInterstitialAd } from '../utils/ads';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -94,7 +94,8 @@ export default function HomeScreen() {
   const hasMoneyCtx = moneyCtx.payAmount > 0;
   const [justifyCount, setJustifyCount] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
-  const { show: showInterstitial } = useInterstitialAd();
+  const { show: showInterstitial, status: interstitialStatus } = useInterstitialAd();
+  const [bannerStatus, setBannerStatus] = useState('idle');
 
   // ── expense logging ───────────────────────────────────
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
@@ -583,7 +584,30 @@ export default function HomeScreen() {
                 unitId={AdUnitIds.banner}
                 size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER}
                 requestOptions={{ requestNonPersonalizedAdsOnly: false }}
+                onAdLoaded={() => {
+                  setBannerStatus('loaded');
+                  if (AdsDebug.enabled) {
+                    console.log('[Ads] Banner loaded', { unitId: AdUnitIds.banner });
+                  }
+                }}
+                onAdFailedToLoad={(error: unknown) => {
+                  setBannerStatus('error');
+                  console.warn('[Ads] Banner failed to load', error);
+                }}
               />
+            </View>
+          )}
+
+          {AdsDebug.enabled && (
+            <View style={styles.debugCard}>
+              <Text style={styles.debugTitle}>Ad debug</Text>
+              <Text style={styles.debugLine}>premium: {isPremium ? 'yes' : 'no'}</Text>
+              <Text style={styles.debugLine}>native module: {AdsDebug.hasNativeModule ? 'ready' : 'missing'}</Text>
+              <Text style={styles.debugLine}>test ids: {AdsDebug.isUsingTestIds ? 'on' : 'off'}</Text>
+              <Text style={styles.debugLine}>banner: {isPremium ? 'hidden for premium' : bannerStatus}</Text>
+              <Text style={styles.debugLine}>interstitial: {interstitialStatus}</Text>
+              <Text style={styles.debugLine}>banner unit: {AdUnitIds.banner}</Text>
+              <Text style={styles.debugLine}>interstitial unit: {AdUnitIds.interstitial}</Text>
             </View>
           )}
 
@@ -788,6 +812,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
     paddingBottom: 20,
+  },
+  debugCard: {
+    marginTop: 16,
+    padding: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  debugTitle: {
+    color: COLORS.white,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  debugLine: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   modeBadge: {
     flexDirection: 'row',

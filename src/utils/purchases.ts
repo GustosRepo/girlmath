@@ -19,6 +19,17 @@ import Purchases, {
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
 
+const MONETIZATION_DEBUG = process.env.EXPO_PUBLIC_ADS_DEBUG === 'true';
+
+function logMonetizationDebug(message: string, details?: unknown) {
+  if (!MONETIZATION_DEBUG) return;
+  if (details === undefined) {
+    console.log(`[Monetization] ${message}`);
+    return;
+  }
+  console.log(`[Monetization] ${message}`, details);
+}
+
 // ─── 🔑 CONFIG ────────────────────────────────────────────────────────────────
 // Set EXPO_PUBLIC_REVENUECAT_IOS_KEY / EXPO_PUBLIC_REVENUECAT_ANDROID_KEY in .env
 const REVENUECAT_IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '';
@@ -45,6 +56,12 @@ export function initRevenueCat(userId?: string) {
     return;
   }
 
+  logMonetizationDebug('Configuring RevenueCat', {
+    platform: Platform.OS,
+    hasKey: !!key,
+    userId: userId ?? null,
+  });
+
   Purchases.setLogLevel(LOG_LEVEL.ERROR);
   try {
     Purchases.configure({ apiKey: key });
@@ -58,15 +75,25 @@ export function initRevenueCat(userId?: string) {
   }
 
   _initialized = true;
+  logMonetizationDebug('RevenueCat configured');
 }
 
 /** Returns true if the user has an active "premium" entitlement. */
 export async function hasPremium(): Promise<boolean> {
-  if (!_initialized) return false;
+  if (!_initialized) {
+    logMonetizationDebug('Premium check skipped because RevenueCat is not initialized');
+    return false;
+  }
   try {
     const info: CustomerInfo = await Purchases.getCustomerInfo();
-    return !!info.entitlements.active[ENTITLEMENT_ID];
-  } catch {
+    const isPremium = !!info.entitlements.active[ENTITLEMENT_ID];
+    logMonetizationDebug('Premium check completed', {
+      isPremium,
+      activeEntitlements: Object.keys(info.entitlements.active),
+    });
+    return isPremium;
+  } catch (error) {
+    logMonetizationDebug('Premium check failed', error);
     return false;
   }
 }
