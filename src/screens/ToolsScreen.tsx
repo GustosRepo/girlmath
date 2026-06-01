@@ -7,7 +7,6 @@ import * as Sharing from 'expo-sharing';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
-import { usePaywall } from '../context/PaywallContext';
 import GradientBackground from '../components/GradientBackground';
 import ScreenTransition from '../components/ScreenTransition';
 import GradientCard from '../components/GradientCard';
@@ -27,8 +26,6 @@ const TOOLS = [
   { key: 'SavingsGoals', emoji: '🎯', tKey: 'goals' },
 ];
 
-const PREMIUM_TOOL_KEYS = new Set(['Insights', 'SubscriptionAudit', 'SavingsGoals']);
-
 function auraLevel(score: number): { emoji: string; tKey: string; color: string } {
   if (score >= 800) return { emoji: '✨', tKey: 'glowing', color: '#22C55E' };
   if (score >= 600) return { emoji: '💚', tKey: 'healing', color: '#84CC16' };
@@ -40,7 +37,6 @@ function auraLevel(score: number): { emoji: string; tKey: string; color: string 
 export default function ToolsScreen() {
   const navigation = useNavigation<any>();
   const { t, i18n } = useTranslation();
-  const { isPremium, showPaywall } = usePaywall();
   const auraShotRef = useRef<ViewShot>(null);
   const momentShotRef = useRef<ViewShot>(null);
 
@@ -169,7 +165,6 @@ export default function ToolsScreen() {
           <Text style={styles.toolsHeader}>{t('tools.tools_header')}</Text>
           {TOOLS.map((tool) => {
             const badge = badgeFor(tool.key);
-            const isLocked = PREMIUM_TOOL_KEYS.has(tool.key) && !isPremium;
 
             return (
               <TouchableOpacity
@@ -177,24 +172,15 @@ export default function ToolsScreen() {
                 activeOpacity={0.8}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  if (isLocked) {
-                    showPaywall();
-                    return;
-                  }
                   navigation.navigate(tool.key);
                 }}
               >
                 <GradientCard>
-                  <View style={[styles.toolRow, isLocked && styles.toolRowLocked]}>
+                  <View style={styles.toolRow}>
                     <Text style={styles.toolEmoji}>{tool.emoji}</Text>
                     <View style={styles.toolInfo}>
                       <View style={styles.toolTitleRow}>
                         <Text style={styles.toolLabel}>{t(`tools.tool_${tool.tKey}_label` as any)}</Text>
-                        {isLocked && (
-                          <View style={[styles.toolBadge, styles.toolBadgeLocked]}>
-                            <Text style={styles.toolBadgeLockedText}>{t('tools.premium_badge')}</Text>
-                          </View>
-                        )}
                         {badge !== '' && (
                           <View style={styles.toolBadge}>
                             <Text style={styles.toolBadgeText}>{badge}</Text>
@@ -202,20 +188,8 @@ export default function ToolsScreen() {
                         )}
                       </View>
                       <Text style={styles.toolDesc}>{t(`tools.tool_${tool.tKey}_desc` as any)}</Text>
-                      {isLocked && (
-                        <TouchableOpacity
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                            showPaywall();
-                          }}
-                          style={styles.toolUpgradeBtn}
-                        >
-                          <Text style={styles.toolUpgradeText}>{t('tools.premium_cta')}</Text>
-                        </TouchableOpacity>
-                      )}
                     </View>
-                    <Text style={styles.toolArrow}>{isLocked ? '🔒' : '›'}</Text>
+                    <Text style={styles.toolArrow}>›</Text>
                   </View>
                 </GradientCard>
               </TouchableOpacity>
@@ -256,17 +230,12 @@ const styles = StyleSheet.create({
   momentShareText: { fontSize: 14, fontWeight: '800', color: COLORS.textSecondary },
   toolsHeader: { fontSize: 18, fontWeight: '900', color: COLORS.white, marginTop: 4, marginBottom: 2, textShadowColor: 'rgba(0,0,0,0.15)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   toolRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  toolRowLocked: { opacity: 0.9 },
   toolEmoji: { fontSize: 28, width: 36 },
   toolInfo: { flex: 1 },
   toolTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   toolLabel: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
   toolBadge: { backgroundColor: 'rgba(255,105,180,0.2)', borderRadius: 10, paddingVertical: 2, paddingHorizontal: 8 },
   toolBadgeText: { fontSize: 11, fontWeight: '800', color: COLORS.pinkHot },
-  toolBadgeLocked: { backgroundColor: 'rgba(124,58,237,0.14)', borderWidth: 1, borderColor: 'rgba(124,58,237,0.24)' },
-  toolBadgeLockedText: { fontSize: 11, fontWeight: '900', color: '#7C3AED' },
   toolDesc: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  toolUpgradeBtn: { alignSelf: 'flex-start', marginTop: 8, backgroundColor: 'rgba(124,58,237,0.12)', borderRadius: 999, paddingVertical: 6, paddingHorizontal: 10, borderWidth: 1, borderColor: 'rgba(124,58,237,0.22)' },
-  toolUpgradeText: { fontSize: 12, fontWeight: '800', color: '#7C3AED' },
   toolArrow: { fontSize: 24, color: COLORS.textMuted, fontWeight: '800' },
 });
