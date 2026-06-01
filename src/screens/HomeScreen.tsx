@@ -221,36 +221,7 @@ export default function HomeScreen() {
   );
 
   // ── justify handler ───────────────────────────────────
-  const handleWatchAdForJustify = useCallback(async () => {
-    if (isPremium || isUnlockingJustify) return;
-
-    setIsUnlockingJustify(true);
-    try {
-      const didEarnReward = await showRewardedAd();
-      if (!didEarnReward) {
-        Alert.alert(t('home.reward_unavailable_title'), t('home.reward_unavailable_body'));
-        return;
-      }
-
-      const nextCredits = await incrementRewardedJustifyCredits(1);
-      setRewardedCredits(nextCredits);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(t('home.reward_unlocked_title'), t('home.reward_unlocked_body'));
-    } finally {
-      setIsUnlockingJustify(false);
-    }
-  }, [isPremium, isUnlockingJustify, showRewardedAd, t]);
-
-  const handleJustify = () => {
-    if (!itemName.trim() || parsedPrice <= 0) return;
-
-    // Free users unlock more justifies with rewarded ads; premium stays unlimited.
-    if (!isPremium && justifyCount >= FREE_JUSTIFIES + rewardedCredits) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      void handleWatchAdForJustify();
-      return;
-    }
-
+  const runJustify = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setLogConfirmMsg('');
 
@@ -317,6 +288,36 @@ export default function HomeScreen() {
         setIsLoading(false);
       }
     }, 800 + Math.random() * 700);
+  }, [itemName, parsedPrice, note, personality, spendable, smartCtx, i18n.language, buttonScale, scrollRef]);
+
+  const handleWatchAdForJustify = useCallback(async () => {
+    if (isPremium || isUnlockingJustify) return;
+
+    setIsUnlockingJustify(true);
+    try {
+      const didEarnReward = await showRewardedAd();
+      if (!didEarnReward) {
+        Alert.alert(t('home.reward_unavailable_title'), t('home.reward_unavailable_body'));
+        return;
+      }
+
+      const nextCredits = await incrementRewardedJustifyCredits(1);
+      setRewardedCredits(nextCredits);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Automatically run the justification now that the credit is granted
+      runJustify();
+    } finally {
+      setIsUnlockingJustify(false);
+    }
+  }, [isPremium, isUnlockingJustify, showRewardedAd, t, runJustify]);
+
+  const handleJustify = () => {
+    if (!itemName.trim() || parsedPrice <= 0) return;
+
+    // Free users unlock more justifies with rewarded ads; premium stays unlimited.
+    if (!isPremium && justifyCount >= FREE_JUSTIFIES + rewardedCredits) return;
+
+    runJustify();
   };
 
   // ── log expense handler (FREE — no daily limit) ────────
@@ -446,7 +447,7 @@ export default function HomeScreen() {
               <TouchableOpacity
                 onPress={handleJustify}
                 activeOpacity={0.8}
-                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading || (!isPremium && justifiesLeft === 0)}
               >
                 <LinearGradient
                   colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
@@ -490,18 +491,8 @@ export default function HomeScreen() {
                 : t('home.free_count_zero_reward')}
           </Text>
 
-          {!isPremium && justifiesLeft === 0 && (
+          {!isPremium && justifiesLeft === 0 && !response && (
             <View style={styles.limitActions}>
-              <TouchableOpacity
-                onPress={() => void handleWatchAdForJustify()}
-                activeOpacity={0.8}
-                disabled={isUnlockingJustify}
-                style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
-              >
-                <Text style={styles.rewardButtonText}>
-                  {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
-                </Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => showPaywall()}
                 activeOpacity={0.8}
@@ -556,6 +547,27 @@ export default function HomeScreen() {
                     {t('home.log_this_too')}
                   </Text>
                 </TouchableOpacity>
+              )}
+              {!isPremium && justifiesLeft === 0 && (
+                <View style={styles.limitActions}>
+                  <TouchableOpacity
+                    onPress={() => void handleWatchAdForJustify()}
+                    activeOpacity={0.8}
+                    disabled={isUnlockingJustify}
+                    style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
+                  >
+                    <Text style={styles.rewardButtonText}>
+                      {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => showPaywall()}
+                    activeOpacity={0.8}
+                    style={styles.upgradePromptBtn}
+                  >
+                    <Text style={styles.upgradePromptText}>{t('home.upgrade_cta')}</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </>
           )}
