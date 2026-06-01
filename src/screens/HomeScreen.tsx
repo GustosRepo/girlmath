@@ -96,6 +96,7 @@ export default function HomeScreen() {
   const [justifyCount, setJustifyCount] = useState(0);
   const [rewardedCredits, setRewardedCredits] = useState(0);
   const justifiesLeft = Math.max(0, FREE_JUSTIFIES + rewardedCredits - justifyCount);
+  const hasReachedFreeLimit = !isPremium && justifiesLeft === 0;
   const { show: showRewardedAd, status: rewardedStatus } = useRewardedAd();
   const [bannerStatus, setBannerStatus] = useState('idle');
   const [isUnlockingJustify, setIsUnlockingJustify] = useState(false);
@@ -304,18 +305,17 @@ export default function HomeScreen() {
       const nextCredits = await incrementRewardedJustifyCredits(1);
       setRewardedCredits(nextCredits);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      // Automatically run the justification now that the credit is granted
-      runJustify();
+      Alert.alert(t('home.reward_unlocked_title'), t('home.reward_unlocked_body'));
     } finally {
       setIsUnlockingJustify(false);
     }
-  }, [isPremium, isUnlockingJustify, showRewardedAd, t, runJustify]);
+  }, [isPremium, isUnlockingJustify, showRewardedAd, t]);
 
   const handleJustify = () => {
     if (!itemName.trim() || parsedPrice <= 0) return;
 
     // Free users unlock more justifies with rewarded ads; premium stays unlimited.
-    if (!isPremium && justifyCount >= FREE_JUSTIFIES + rewardedCredits) return;
+    if (hasReachedFreeLimit) return;
 
     runJustify();
   };
@@ -447,16 +447,16 @@ export default function HomeScreen() {
               <TouchableOpacity
                 onPress={handleJustify}
                 activeOpacity={0.8}
-                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading || (!isPremium && justifiesLeft === 0)}
+                disabled={!itemName.trim() || parsedPrice <= 0 || isLoading || hasReachedFreeLimit}
               >
                 <LinearGradient
-                  colors={justifiesLeft === 0 ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
+                  colors={hasReachedFreeLimit ? ['#9ca3af', '#6b7280'] : GRADIENTS.button as [string, string, ...string[]]}
                   style={styles.button}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.buttonText}>
-                    {isLoading ? '✨ ...' : justifiesLeft === 0 ? '🔒' : t('home.justify_btn')}
+                    {isLoading ? '✨ ...' : hasReachedFreeLimit ? '🔒' : t('home.justify_btn')}
                   </Text>
                 </LinearGradient>
               </TouchableOpacity>
@@ -491,8 +491,18 @@ export default function HomeScreen() {
                 : t('home.free_count_zero_reward')}
           </Text>
 
-          {!isPremium && justifiesLeft === 0 && !response && (
+          {hasReachedFreeLimit && (
             <View style={styles.limitActions}>
+              <TouchableOpacity
+                onPress={() => void handleWatchAdForJustify()}
+                activeOpacity={0.8}
+                disabled={isUnlockingJustify}
+                style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
+              >
+                <Text style={styles.rewardButtonText}>
+                  {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => showPaywall()}
                 activeOpacity={0.8}
@@ -547,27 +557,6 @@ export default function HomeScreen() {
                     {t('home.log_this_too')}
                   </Text>
                 </TouchableOpacity>
-              )}
-              {!isPremium && justifiesLeft === 0 && (
-                <View style={styles.limitActions}>
-                  <TouchableOpacity
-                    onPress={() => void handleWatchAdForJustify()}
-                    activeOpacity={0.8}
-                    disabled={isUnlockingJustify}
-                    style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
-                  >
-                    <Text style={styles.rewardButtonText}>
-                      {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => showPaywall()}
-                    activeOpacity={0.8}
-                    style={styles.upgradePromptBtn}
-                  >
-                    <Text style={styles.upgradePromptText}>{t('home.upgrade_cta')}</Text>
-                  </TouchableOpacity>
-                </View>
               )}
             </>
           )}
@@ -755,19 +744,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   limitActions: {
-    alignItems: 'center',
     gap: 10,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   rewardButton: {
-    alignSelf: 'center',
-    marginBottom: 12,
+    alignSelf: 'stretch',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
+    paddingVertical: 13,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.92)',
     borderWidth: 1,
     borderColor: 'rgba(124,58,237,0.18)',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 4,
   },
   rewardButtonDisabled: {
     opacity: 0.6,
@@ -777,12 +770,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   upgradePromptBtn: {
-    alignSelf: 'center',
+    alignSelf: 'stretch',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.24)',
@@ -792,6 +787,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
+    textAlign: 'center',
   },
   vagueHint: {
     fontSize: 12,
