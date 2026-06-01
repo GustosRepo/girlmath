@@ -6,6 +6,8 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 let _mobileAds: any;
 let _InterstitialAd: any;
 let _AdEventType: any;
+let _RewardedAd: any;
+let _RewardedAdEventType: any;
 let _MaxAdContentRating: any;
 let _BannerAd: any;
 let _BannerAdSize: any;
@@ -14,6 +16,8 @@ try {
   _mobileAds = m.default;
   _InterstitialAd = m.InterstitialAd;
   _AdEventType = m.AdEventType;
+  _RewardedAd = m.RewardedAd;
+  _RewardedAdEventType = m.RewardedAdEventType;
   _MaxAdContentRating = m.MaxAdContentRating;
   _BannerAd = m.BannerAd;
   _BannerAdSize = m.BannerAdSize;
@@ -46,6 +50,10 @@ const GOOGLE_TEST_IDS = {
     ios: 'ca-app-pub-3940256099942544/4411468910',
     android: 'ca-app-pub-3940256099942544/1033173712',
   },
+  rewarded: {
+    ios: 'ca-app-pub-3940256099942544/1712485313',
+    android: 'ca-app-pub-3940256099942544/5224354917',
+  },
 };
 
 const CONFIGURED_IDS = {
@@ -57,6 +65,10 @@ const CONFIGURED_IDS = {
     ios: process.env.EXPO_PUBLIC_ADMOB_IOS_INTERSTITIAL ?? GOOGLE_TEST_IDS.interstitial.ios,
     android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_INTERSTITIAL ?? GOOGLE_TEST_IDS.interstitial.android,
   },
+  rewarded: {
+    ios: process.env.EXPO_PUBLIC_ADMOB_IOS_REWARDED ?? GOOGLE_TEST_IDS.rewarded.ios,
+    android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_REWARDED ?? GOOGLE_TEST_IDS.rewarded.android,
+  },
 };
 
 const IDS = ADS_FORCE_TEST_IDS ? GOOGLE_TEST_IDS : CONFIGURED_IDS;
@@ -64,6 +76,7 @@ const IDS = ADS_FORCE_TEST_IDS ? GOOGLE_TEST_IDS : CONFIGURED_IDS;
 export const AdUnitIds = {
   banner: Platform.OS === 'ios' ? IDS.banner.ios : IDS.banner.android,
   interstitial: Platform.OS === 'ios' ? IDS.interstitial.ios : IDS.interstitial.android,
+  rewarded: Platform.OS === 'ios' ? IDS.rewarded.ios : IDS.rewarded.android,
 };
 
 export const AdsDebug = {
@@ -84,6 +97,7 @@ export async function initializeAds(): Promise<void> {
     platform: Platform.OS,
     bannerUnitId: AdUnitIds.banner,
     interstitialUnitId: AdUnitIds.interstitial,
+    rewardedUnitId: AdUnitIds.rewarded,
     usingTestIds: ADS_FORCE_TEST_IDS,
   });
 
@@ -160,6 +174,103 @@ export function useInterstitialAd() {
     }
     logAdsDebug('Interstitial show skipped because ad is not loaded', { status });
     return false;
+  }, [status]);
+
+  return { show, status };
+}
+
+export function useRewardedAd() {
+  const adRef = useRef<any>(null);
+  const isLoadedRef = useRef(false);
+  const earnedRewardRef = useRef(false);
+  const pendingResolverRef = useRef<((didEarnReward: boolean) => void) | null>(null);
+  const [status, setStatus] = useState('idle');
+
+  const resolvePending = useCallback((didEarnReward: boolean) => {
+    if (!pendingResolverRef.current) return;
+    pendingResolverRef.current(didEarnReward);
+    pendingResolverRef.current = null;
+  }, []);
+
+  const load = useCallback(() => {
+    if (!_RewardedAd) {
+      setStatus('native-module-missing');
+      logAdsDebug('Skipping rewarded preload because native ads module is unavailable');
+      return () => {};
+    }
+
+    setStatus('loading');
+    logAdsDebug('Loading rewarded ad', { unitId: AdUnitIds.rewarded });
+
+    const ad = _RewardedAd.createForAdRequest(AdUnitIds.rewarded, {
+      requestNonPersonalizedAdsOnly: false,
+    });
+    adRef.current = ad;
+    isLoadedRef.current = false;
+    earnedRewardRef.current = false;
+
+    const loadedEvent = _RewardedAdEventType?.LOADED ?? _AdEventType?.LOADED;
+    const earnedEvent = _RewardedAdEventType?.EARNED_REWARD;
+
+    const unsubLoad = loadedEvent
+      ? ad.addAdEventListener(loadedEvent, () => {
+          isLoadedRef.current = true;
+          setStatus('loaded');
+          logAdsDebug('Rewarded ad loaded');
+        })
+      : () => {};
+
+    const unsubEarned = earnedEvent
+      ? ad.addAdEventListener(earnedEvent, (reward: unknown) => {
+          earnedRewardRef.current = true;
+          setStatus('earned-reward');
+          logAdsDebug('Rewarded ad earned reward', reward);
+          resolvePending(true);
+        })
+      : () => {};
+
+    const unsubClose = ad.addAdEventListener(_AdEventType.CLOSED, () => {
+      isLoadedRef.current = false;
+      setStatus('closed');
+      if (!earnedRewardRef.current) resolvePending(false);
+      logAdsDebug('Rewarded ad closed; reloading');
+      load();
+    });
+
+    const unsubError = ad.addAdEventListener(_AdEventType.ERROR, (error: unknown) => {
+      isLoadedRef.current = false;
+      setStatus('error');
+      resolvePending(false);
+      logAdsDebug('Rewarded ad failed to load/show', error);
+      load();
+    });
+
+    ad.load();
+    return () => {
+      unsubLoad();
+      unsubEarned();
+      unsubClose();
+      unsubError();
+    };
+  }, [resolvePending]);
+
+  useEffect(() => {
+    const cleanup = load();
+    return cleanup;
+  }, [load]);
+
+  const show = useCallback((): Promise<boolean> => {
+    if (isLoadedRef.current && adRef.current) {
+      setStatus('showing');
+      earnedRewardRef.current = false;
+      logAdsDebug('Showing rewarded ad');
+      return new Promise<boolean>((resolve) => {
+        pendingResolverRef.current = resolve;
+        adRef.current.show();
+      });
+    }
+    logAdsDebug('Rewarded ad show skipped because ad is not loaded', { status });
+    return Promise.resolve(false);
   }, [status]);
 
   return { show, status };

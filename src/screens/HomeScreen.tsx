@@ -9,9 +9,10 @@ import {
   Platform,
   Animated,
   Image,
+  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { BannerAd, BannerAdSize, AdUnitIds, AdsDebug, useInterstitialAd } from '../utils/ads';
+import { BannerAd, BannerAdSize, AdUnitIds, AdsDebug, useInterstitialAd, useRewardedAd } from '../utils/ads';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -29,7 +30,7 @@ import {
 } from '../types';
 import { generateJustification } from '../utils/girlMathEngine';
 import { computeSpendable, fmt$ } from '../utils/finance';
-import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore, addToSavingsJar } from '../utils/storage';
+import { loadState, addHistory, incrementJustifyCount, getJustifyCount, incrementTotalJustifyCount, loadPeriodExpenses, addExpense, loadAuraTheme, loadHistory, loadSavingsJar, loadTreatBudget, loadAuraScore, updateAuraScore, addToSavingsJar, getRewardedJustifyCredits, incrementRewardedJustifyCredits } from '../utils/storage';
 import * as StoreReview from 'expo-store-review';
 import { usePaywall } from '../context/PaywallContext';
 import { maybeSendBudgetAlert } from '../utils/notifications';
@@ -93,9 +94,12 @@ export default function HomeScreen() {
   });
   const hasMoneyCtx = moneyCtx.payAmount > 0;
   const [justifyCount, setJustifyCount] = useState(0);
-  const justifiesLeft = Math.max(0, FREE_JUSTIFIES - justifyCount);
+  const [rewardedCredits, setRewardedCredits] = useState(0);
+  const justifiesLeft = Math.max(0, FREE_JUSTIFIES + rewardedCredits - justifyCount);
   const { show: showInterstitial, status: interstitialStatus } = useInterstitialAd();
+  const { show: showRewardedAd, status: rewardedStatus } = useRewardedAd();
   const [bannerStatus, setBannerStatus] = useState('idle');
+  const [isUnlockingJustify, setIsUnlockingJustify] = useState(false);
 
   // ── expense logging ───────────────────────────────────
   const [periodExpenses, setPeriodExpenses] = useState<PeriodExpenses>({ periodStart: '', total: 0 });
@@ -158,8 +162,9 @@ export default function HomeScreen() {
         const saved = await loadState();
         if (saved.moneyContext) setMoneyCtx(saved.moneyContext);
         if (saved.lastMode) setPersonality(saved.lastMode);
-        const c = await getJustifyCount();
+        const [c, bonus] = await Promise.all([getJustifyCount(), getRewardedJustifyCredits()]);
         setJustifyCount(c);
+        setRewardedCredits(bonus);
         const freq = saved.moneyContext?.payFrequency ?? 'biweekly';
         const expenses = await loadPeriodExpenses(freq);
         setPeriodExpenses(expenses);
@@ -217,13 +222,37 @@ export default function HomeScreen() {
   );
 
   // ── justify handler ───────────────────────────────────
+  const handleWatchAdForJustify = useCallback(async () => {
+    if (isPremium || isUnlockingJustify) return;
+
+    setIsUnlockingJustify(true);
+    try {
+      const didEarnReward = await showRewardedAd();
+      if (!didEarnReward) {
+        Alert.alert(t('home.reward_unavailable_title'), t('home.reward_unavailable_body'));
+        return;
+      }
+
+      const nextCredits = await incrementRewardedJustifyCredits(1);
+      setRewardedCredits(nextCredits);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert(t('home.reward_unlocked_title'), t('home.reward_unlocked_body'));
+    } finally {
+      setIsUnlockingJustify(false);
+    }
+  }, [isPremium, isUnlockingJustify, showRewardedAd, t]);
+
   const handleJustify = () => {
     if (!itemName.trim() || parsedPrice <= 0) return;
 
     // Hard gate — if limit already hit, show paywall
-    if (justifyCount >= FREE_JUSTIFIES) {
+    if (justifyCount >= FREE_JUSTIFIES + rewardedCredits) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-      showPaywall();
+      if (!isPremium) {
+        void handleWatchAdForJustify();
+      } else {
+        showPaywall();
+      }
       return;
     }
 
@@ -277,11 +306,15 @@ export default function HomeScreen() {
         const count = await incrementJustifyCount();
         setJustifyCount(count);
         if (count >= FREE_JUSTIFIES) {
-          // Small delay so the response animates in first
-          setTimeout(() => showPaywall(), 1800);
-        } else if (!isPremium && count === FREE_JUSTIFIES - 1) {
-          // Show interstitial after 2nd free justify (one before paywall nudge)
-          setTimeout(() => { try { showInterstitial(); } catch {} }, 1500);
+          if (!isPremium && count === FREE_JUSTIFIES) {
+            setTimeout(() => {
+              let didShowInterstitial = false;
+              try {
+                didShowInterstitial = showInterstitial();
+              } catch {}
+              setTimeout(() => showPaywall(), didShowInterstitial ? 2600 : 0);
+            }, 1500);
+          }
         }
 
         // Lifetime counter → ask for review after 5th total justify
@@ -469,8 +502,23 @@ export default function HomeScreen() {
           <Text style={styles.justifiesRemainingText}>
             {justifiesLeft > 0
               ? t('home.free_count', { count: justifiesLeft })
-              : t('home.free_count_zero')}
+              : isPremium
+                ? t('home.free_count_zero')
+                : t('home.free_count_zero_reward')}
           </Text>
+
+          {!isPremium && justifiesLeft === 0 && (
+            <TouchableOpacity
+              onPress={() => void handleWatchAdForJustify()}
+              activeOpacity={0.8}
+              disabled={isUnlockingJustify}
+              style={[styles.rewardButton, isUnlockingJustify && styles.rewardButtonDisabled]}
+            >
+              <Text style={styles.rewardButtonText}>
+                {isUnlockingJustify ? t('home.watch_ad_loading') : t('home.watch_ad_cta')}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {/* ── Thinking cat while loading ──────────── */}
           {isLoading && (
@@ -606,8 +654,11 @@ export default function HomeScreen() {
               <Text style={styles.debugLine}>test ids: {AdsDebug.isUsingTestIds ? 'on' : 'off'}</Text>
               <Text style={styles.debugLine}>banner: {isPremium ? 'hidden for premium' : bannerStatus}</Text>
               <Text style={styles.debugLine}>interstitial: {interstitialStatus}</Text>
+              <Text style={styles.debugLine}>rewarded: {rewardedStatus}</Text>
+              <Text style={styles.debugLine}>rewarded credits: {rewardedCredits}</Text>
               <Text style={styles.debugLine}>banner unit: {AdUnitIds.banner}</Text>
               <Text style={styles.debugLine}>interstitial unit: {AdUnitIds.interstitial}</Text>
+              <Text style={styles.debugLine}>rewarded unit: {AdUnitIds.rewarded}</Text>
             </View>
           )}
 
@@ -700,6 +751,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: -4,
     marginBottom: 8,
+  },
+  rewardButton: {
+    alignSelf: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.18)',
+  },
+  rewardButtonDisabled: {
+    opacity: 0.6,
+  },
+  rewardButtonText: {
+    color: '#7C3AED',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   vagueHint: {
     fontSize: 12,

@@ -389,7 +389,6 @@ export async function clearHistory(): Promise<void> {
 // ── Justify counter — daily limit (resets each new day) ───────
 // Stored as JSON: { count: number, date: 'YYYY-MM-DD' }
 const JUSTIFY_COUNT_KEY = '@girlmath_justify_count';
-
 function todayStr(): string {
   // Use local date, not UTC, so the daily reset matches the user's actual day
   const d = new Date();
@@ -423,6 +422,33 @@ export async function getJustifyCount(): Promise<number> {
     if (!raw) return 0;
     const parsed = parseJson(raw);
     return isRecord(parsed) && parsed.date === todayStr() ? Math.round(asNumber(parsed.count, 0, 0, 1_000)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// ── Rewarded justify credits — daily bonus credits from ads ─────────
+// Stored as JSON: { count: number, date: 'YYYY-MM-DD' }
+const REWARDED_JUSTIFY_KEY = '@girlmath_rewarded_justifies';
+
+export async function getRewardedJustifyCredits(): Promise<number> {
+  try {
+    const raw = await AsyncStorage.getItem(REWARDED_JUSTIFY_KEY);
+    if (!raw) return 0;
+    const parsed = parseJson(raw);
+    return isRecord(parsed) && parsed.date === todayStr() ? Math.round(asNumber(parsed.count, 0, 0, 1_000)) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export async function incrementRewardedJustifyCredits(amount = 1): Promise<number> {
+  try {
+    const today = todayStr();
+    const current = await getRewardedJustifyCredits();
+    const next = Math.max(0, current + Math.round(asNumber(amount, 1, 0, 100)));
+    await AsyncStorage.setItem(REWARDED_JUSTIFY_KEY, JSON.stringify({ count: next, date: today }));
+    return next;
   } catch {
     return 0;
   }
