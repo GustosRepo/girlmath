@@ -210,7 +210,7 @@ export default function HistoryScreen() {
   })();
 
   // Cap history for free users
-  const FREE_HISTORY_CAP = 7;
+  const FREE_HISTORY_CAP = 10;
   const displayedHistory = isPremium ? history : history.slice(0, FREE_HISTORY_CAP);
   const hasLockedEntries = !isPremium && history.length > FREE_HISTORY_CAP;
 

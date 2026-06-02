@@ -70,8 +70,10 @@ export default function SpendLogScreen() {
 
   const parsedAmount = parseFloat(amount) || 0;
 
+  const FREE_CATEGORIES: SpendCategory[] = ['misc', 'food', 'shopping'];
+
   const handleCategorySelect = (cat: SpendCategory) => {
-    if (!isPremium && cat !== 'misc') {
+    if (!isPremium && !FREE_CATEGORIES.includes(cat)) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
       showPaywall();
       return;
@@ -188,7 +190,7 @@ export default function SpendLogScreen() {
               <Text style={styles.cardTitle}>{t('spend_log.category_title')}</Text>
               <View style={styles.categoryGrid}>
                 {SPEND_CATEGORIES.map((cat) => {
-                  const isLocked = !isPremium && cat.key !== 'misc';
+                  const isLocked = !isPremium && !FREE_CATEGORIES.includes(cat.key);
                   const isSelected = selectedCategory === cat.key;
                   const catTotal = periodExpenses.byCategory?.[cat.key] ?? 0;
                   return (
