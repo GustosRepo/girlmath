@@ -38,6 +38,10 @@ yarn-error.*
 .env
 .env*.local
 
+# Firebase config — uploaded as EAS secrets, never commit
+google-services.json
+GoogleService-Info.plist
+
 # typescript
 *.tsbuildinfo
 

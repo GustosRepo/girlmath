@@ -49,6 +49,17 @@
           "color": "#FFB6D9",
           "defaultChannel": "bills"
         }
+      ],
+      [
+        "@react-native-firebase/app",
+        {
+          "android": {
+            "googleServicesFile": "./google-services.json"
+          },
+          "ios": {
+            "googleServicesFile": "./GoogleService-Info.plist"
+          }
+        }
       ]
     ],
     "web": {
