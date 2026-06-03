@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setupAndroidChannel } from './src/utils/notifications';
 import { initRevenueCat } from './src/utils/purchases';
 import { initializeAds } from './src/utils/ads';
+import { initializeFirebase } from './src/utils/firebase';
 import { runStorageMigrations } from './src/utils/storage';
 import HomeScreen from './src/screens/HomeScreen';
 import BillsScreen from './src/screens/BillsScreen';
@@ -72,6 +73,7 @@ export default function App() {
     }, 5000);
 
     try { setupAndroidChannel(); } catch {}
+    try { initializeFirebase(); } catch {}
     void initializeAds().catch((error) => {
       console.warn('[Ads] initializeAds failed', error);
     });

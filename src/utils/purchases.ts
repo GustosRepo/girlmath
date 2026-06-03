@@ -18,6 +18,7 @@ import Purchases, {
   type CustomerInfo,
 } from 'react-native-purchases';
 import { Platform, Alert } from 'react-native';
+import { trackEvent } from './firebase';
 
 const MONETIZATION_DEBUG = process.env.EXPO_PUBLIC_ADS_DEBUG === 'true';
 
@@ -117,7 +118,17 @@ export async function purchaseMonthly(): Promise<boolean> {
       return false;
     }
     const { customerInfo } = await Purchases.purchasePackage(monthly);
-    return !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+    const success = !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+    
+    // Track successful purchase for Google Ads
+    if (success) {
+      try {
+        const price = monthly.product.price;
+        await trackEvent.purchase(MONTHLY_PRODUCT_ID, price, price);
+      } catch {}
+    }
+    
+    return success;
   } catch (e: any) {
     if (!e.userCancelled) {
       Alert.alert('Purchase failed 😢', e.message ?? 'Something went wrong');
@@ -145,7 +156,17 @@ export async function purchaseYearly(): Promise<boolean> {
       return false;
     }
     const { customerInfo } = await Purchases.purchasePackage(yearly);
-    return !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+    const success = !!customerInfo.entitlements.active[ENTITLEMENT_ID];
+    
+    // Track successful purchase for Google Ads
+    if (success) {
+      try {
+        const price = yearly.product.price;
+        await trackEvent.purchase(YEARLY_PRODUCT_ID, price, price);
+      } catch {}
+    }
+    
+    return success;
   } catch (e: any) {
     if (!e.userCancelled) {
       Alert.alert('Purchase failed 😢', e.message ?? 'Something went wrong');

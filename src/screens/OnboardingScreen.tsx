@@ -19,6 +19,7 @@ import { COLORS, GRADIENTS, PERSONALITY_OPTIONS } from '../utils/theme';
 import { PersonalityMode } from '../types';
 import { saveMode, saveLanguage, type SupportedLanguage } from '../utils/storage';
 import { PAYWALL_DISMISSED_KEY } from './PaywallScreen';
+import { trackEvent } from '../utils/firebase';
 
 const { width, height } = Dimensions.get('window');
 
@@ -102,6 +103,10 @@ export default function OnboardingScreen({ onComplete }: Props) {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     // Don't hit the paywall immediately after onboarding — give the user a proper first look
     await AsyncStorage.setItem(PAYWALL_DISMISSED_KEY, 'true');
+    
+    // Track onboarding completion for Google Ads
+    try { await trackEvent.completeOnboarding(); } catch {}
+    
     onComplete(goToBills);
   };
 

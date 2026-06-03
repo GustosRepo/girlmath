@@ -21,6 +21,7 @@ import {
   purchaseYearly,
   restorePurchases,
 } from '../utils/purchases';
+import { trackEvent } from '../utils/firebase';
 
 export { purchaseMonthly, purchaseYearly, restorePurchases };
 
@@ -54,6 +55,9 @@ export default function PaywallScreen({ onClose }: Props) {
   const shineAnim = useRef(new Animated.Value(-1)).current;
 
   useEffect(() => {
+    // Track paywall view for Google Ads
+    trackEvent.viewPaywall().catch(() => {});
+
     Animated.loop(
       Animated.sequence([
         Animated.timing(floatAnim, {
@@ -109,6 +113,14 @@ export default function PaywallScreen({ onClose }: Props) {
   const handlePurchase = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPurchasing(true);
+    
+    // Track checkout initiation for Google Ads
+    try {
+      await trackEvent.beginCheckout(
+        selectedPlan === 'monthly' ? 'monthly_premium' : 'yearly_premium'
+      );
+    } catch {}
+    
     try {
       const success =
         selectedPlan === 'monthly'
