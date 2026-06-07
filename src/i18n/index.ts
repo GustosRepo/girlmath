@@ -33,11 +33,16 @@ i18n.use(initReactI18next).init({
 
 // Load saved language preference and update i18n
 // Export this promise so App can wait for it if needed
-export const i18nReady = loadLanguage().then((savedLang) => {
-  if (savedLang && savedLang !== i18n.language) {
-    return i18n.changeLanguage(savedLang).then(() => undefined);
-  }
-  return Promise.resolve();
-});
+export const i18nReady = loadLanguage()
+  .then((savedLang) => {
+    if (savedLang && savedLang !== i18n.language) {
+      return i18n.changeLanguage(savedLang).then(() => undefined);
+    }
+    return Promise.resolve();
+  })
+  .catch((error) => {
+    console.warn('[i18n] Failed to load saved language:', error);
+    return Promise.resolve(); // Don't block app startup on i18n errors
+  });
 
 export default i18n;

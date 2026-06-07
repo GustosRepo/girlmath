@@ -17,14 +17,18 @@ Notifications.setNotificationHandler({
 
 // ── Android channel ────────────────────────────────────────
 export async function setupAndroidChannel() {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('bills', {
-      name: 'Bill Reminders 💸',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF69B4',
-      sound: 'default',
-    });
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('bills', {
+        name: 'Bill Reminders 💸',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#FF69B4',
+        sound: 'default',
+      });
+    }
+  } catch (error) {
+    console.warn('[Notifications] Failed to setup Android channel:', error);
   }
 }
 
