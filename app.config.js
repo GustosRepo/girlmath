@@ -7,6 +7,14 @@ const androidAppId = process.env.ADMOB_ANDROID_APP_ID || 'ca-app-pub-39402560999
 /** @type {import('@expo/config').ExpoConfig} */
 module.exports = ({ config }) => ({
   ...config,
+  ios: {
+    ...config.ios,
+    googleServicesFile: process.env.GOOGLE_SERVICE_INFO_PLIST || './GoogleService-Info.plist',
+  },
+  android: {
+    ...config.android,
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
+  },
   plugins: [
     [
       'react-native-google-mobile-ads',
