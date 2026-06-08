@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text, View, StyleSheet } from 'react-native';
 import { useEffect, useState } from 'react';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setupAndroidChannel } from './src/utils/notifications';
@@ -59,6 +60,109 @@ function ToolsNavigator() {
   );
 }
 
+function MainTabs({ initialTab }: { initialTab: string }) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Tab.Navigator
+      initialRouteName={initialTab}
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: 'rgba(255,255,255,0.92)',
+          borderTopWidth: 0,
+          elevation: 20,
+          shadowColor: '#C084FC',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 12,
+          height: 85 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 28,
+          paddingTop: 8,
+          paddingHorizontal: 8,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          position: 'absolute',
+        },
+        tabBarActiveTintColor: '#7C3AED',
+        tabBarInactiveTintColor: '#9B8EC4',
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+          letterSpacing: 0.3,
+        },
+      }}
+    >
+      <Tab.Screen
+        name="Justify"
+        component={HomeScreen}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'justify',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="💸" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="SpendLog"
+        component={SpendLogScreen}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'log',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="📝" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Bills"
+        component={BillsScreen}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'bills',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="📅" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'diary',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="🦋" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Tools"
+        component={ToolsNavigator}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'tools',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="🛠️" focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        listeners={{ tabPress: () => Haptics.selectionAsync() }}
+        options={{
+          tabBarLabel: 'settings',
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="⚙️" focused={focused} />
+          ),
+        }}
+      />
+    </Tab.Navigator>
+  );
+}
+
 export default function App() {
   // null = still checking storage, false = show onboarding, true = show app
   const [hasOnboarded, setHasOnboarded] = useState<boolean | null>(null);
@@ -103,7 +207,7 @@ export default function App() {
   // First-time user — show onboarding (full screen, no nav)
   if (!hasOnboarded) {
     return (
-      <>
+      <SafeAreaProvider>
         <StatusBar style="light" />
         <OnboardingScreen
           onComplete={(goToBills) => {
@@ -111,112 +215,19 @@ export default function App() {
             setHasOnboarded(true);
           }}
         />
-      </>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <PaywallProvider>
-      <StatusBar style="light" />
-      <NavigationContainer>
-        <Tab.Navigator
-          initialRouteName={initialTab}
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: {
-              backgroundColor: 'rgba(255,255,255,0.92)',
-              borderTopWidth: 0,
-              elevation: 20,
-              shadowColor: '#C084FC',
-              shadowOffset: { width: 0, height: -4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 12,
-              height: 85,
-              paddingBottom: 28,
-              paddingTop: 8,
-              paddingHorizontal: 8,
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              position: 'absolute',
-            },
-            tabBarActiveTintColor: '#7C3AED',
-            tabBarInactiveTintColor: '#9B8EC4',
-            tabBarLabelStyle: {
-              fontSize: 11,
-              fontWeight: '700',
-              letterSpacing: 0.3,
-            },
-          }}
-        >
-          <Tab.Screen
-            name="Justify"
-            component={HomeScreen}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'justify',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="💸" focused={focused} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="SpendLog"
-            component={SpendLogScreen}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'log',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="📝" focused={focused} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Bills"
-            component={BillsScreen}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'bills',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="📅" focused={focused} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="History"
-            component={HistoryScreen}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'diary',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="🦋" focused={focused} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Tools"
-            component={ToolsNavigator}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'tools',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="🛠️" focused={focused} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Settings"
-            component={SettingsScreen}
-            listeners={{ tabPress: () => Haptics.selectionAsync() }}
-            options={{
-              tabBarLabel: 'settings',
-              tabBarIcon: ({ focused }) => (
-                <TabIcon emoji="⚙️" focused={focused} />
-              ),
-            }}
-          />
-        </Tab.Navigator>
-      </NavigationContainer>
-    </PaywallProvider>
+    <SafeAreaProvider>
+      <PaywallProvider>
+        <StatusBar style="light" />
+        <NavigationContainer>
+          <MainTabs initialTab={initialTab} />
+        </NavigationContainer>
+      </PaywallProvider>
+    </SafeAreaProvider>
   );
 }
 
